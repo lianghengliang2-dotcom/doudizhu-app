@@ -1,0 +1,45 @@
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+*.swp
+*.swo
+
+# ===== 编辑器 / IDE =====
+.idea/
+*.iml
+*.ipr
+*.iws
+.atom/
+.history
+# VS Code：如需共享 launch/tasks 配置可取消下一行注释
+#.vscode/
+
+# ===== Claude Code 本地私有设置 =====
+.claude/settings.local.json
+
+# ===== 日志 / 临时文件 =====
+*.log
+*.tmp
+*.bak
+.buildlog/
+
+# ===== Flutter / Dart =====
+# （doudizhu_app/ 内已有更具体的 .gitignore，此处为顶层兜底）
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+app.*.symbols
+app.*.map.json
+
+# Android Studio build artifacts
+/android/app/debug
+/android/app/profile
+/android/app/release

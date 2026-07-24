@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>斗地主记分 - 界面预览</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px; }
+
+/* Tab bar */
+.tab-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
+.tab-bar button { padding: 8px 16px; border: 1px solid #8B6914; border-radius: 8px; background: #1C1410; color: #F5E6C8; cursor: pointer; font-size: 13px; font-weight: bold; transition: all .2s; }
+.tab-bar button:hover { border-color: #C4952A; }
+.tab-bar button.active { background: #C41E1E; border-color: #C4952A; }
+
+/* Phone frame */
+.phone { width: 390px; min-height: 720px; background: #0A0A0A; border-radius: 24px; border: 3px solid #333; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
+.screen { display: none; flex-direction: column; height: 100%; min-height: 720px; }
+.screen.active { display: flex; }
+
+/* App bar */
+.app-bar { padding: 16px 16px 12px; display: flex; align-items: center; justify-content: space-between; }
+.app-bar h1 { color: #F5E6C8; font-size: 20px; font-weight: bold; }
+.app-bar .actions { display: flex; gap: 8px; }
+.app-bar .actions span { color: #F5E6C8; font-size: 20px; cursor: pointer; opacity: 0.7; }
+
+/* Cards */
+.card { background: linear-gradient(135deg, #1C1410, #2A1F18); border: 1px solid #8B6914; border-radius: 12px; }
+
+/* Score card */
+.score-card { text-align: center; padding: 16px 12px; border: 2px solid #C4952A; box-shadow: 0 2px 8px rgba(139,105,20,0.2); }
+.score-card .gold-line { height: 3px; margin-bottom: 8px; background: linear-gradient(90deg, #8B6914, #C4952A, #8B6914); border-radius: 2px; }
+.score-card .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; border: 2px solid #C4952A; color: #fff; font-weight: bold; font-size: 18px; }
+.score-card .name { color: #F5E6C8; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+.score-card .score { font-size: 32px; font-weight: bold; line-height: 1; }
+.score-card .score.positive { color: #FF6B35; }
+.score-card .score.negative { color: #4CAF50; }
+
+/* Divider */
+.gold-divider { height: 1px; background: linear-gradient(90deg, transparent, #8B6914, transparent); margin: 8px 12px; }
+
+/* Round record */
+.round-tile { margin: 3px 12px; padding: 12px; border-radius: 10px; }
+.round-tile .row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.round-tile .tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+.round-tile .tag-index { background: rgba(196,149,42,0.15); color: #FFD54F; border: 1px solid #8B6914; }
+.round-tile .tag-result-win { background: rgba(229,57,53,0.15); color: #E53935; border: 1px solid #E53935; }
+.round-tile .tag-result-lose { background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid #4CAF50; }
+.round-tile .tag-badge { background: rgba(196,149,42,0.2); color: #FFD54F; border: 1px solid #8B6914; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+.round-tile .name { color: #F5E6C8; font-weight: bold; }
+.round-tile .sub { color: #8B7355; }
+.round-tile .row2 { display: flex; justify-content: space-between; }
+.round-tile .score-text { font-size: 13px; font-weight: 600; }
+.round-tile .score-text.positive { color: #FF6B35; }
+.round-tile .score-text.negative { color: #4CAF50; }
+
+/* Input panel */
+.input-panel { margin: 0 12px 24px; padding: 16px; }
+.input-panel .section-label { color: #FFD54F; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+.input-panel .section-gap { height: 12px; }
+.btn-row { display: flex; gap: 6px; }
+.btn-option { flex: 1; padding: 10px 0; text-align: center; border-radius: 8px; border: 1px solid #8B6914; background: #1C1410; color: #8B7355; font-weight: bold; cursor: pointer; transition: all .15s; font-size: 14px; }
+.btn-option.selected { background: linear-gradient(135deg, #C41E1E, #E53935); border-color: #C4952A; border-width: 2px; color: #F5E6C8; }
+.btn-option.selected-green { background: linear-gradient(135deg, #2E7D32, #4CAF50); border-color: #4CAF50; border-width: 2px; color: #F5E6C8; }
+.btn-small { padding: 6px 10px; border-radius: 6px; border: 1px solid #8B6914; background: #1C1410; color: #8B7355; font-size: 13px; cursor: pointer; transition: all .15s; }
+.btn-small.selected { background: linear-gradient(135deg, #C41E1E, #E53935); border-color: #C4952A; border-width: 2px; color: #F5E6C8; font-weight: bold; }
+.preview-box { margin-top: 14px; padding: 12px; text-align: center; border-radius: 8px; border: 1px solid #C4952A; background: linear-gradient(135deg, rgba(196,30,30,0.2), rgba(229,57,53,0.1)); }
+.preview-box .label { color: #8B7355; }
+.preview-box .num { color: #FFD54F; font-size: 32px; font-weight: bold; line-height: 1; }
+.submit-btn { width: 100%; padding: 14px; margin-top: 12px; border: none; border-radius: 12px; background: #C41E1E; color: #F5E6C8; font-size: 16px; font-weight: bold; cursor: pointer; }
+.submit-btn:disabled { opacity: 0.5; cursor: default; }
+.count-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #C4952A; background: #1C1410; color: #FFD54F; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.count-num { width: 36px; text-align: center; color: #FFD54F; font-size: 18px; font-weight: bold; line-height: 36px; }
+
+/* New session */
+.player-item { margin: 0 12px 8px; padding: 14px; display: flex; align-items: center; border-radius: 12px; cursor: pointer; transition: all .15s; }
+.player-item.checked { border-color: #C4952A; border-width: 2px; background: linear-gradient(135deg, rgba(196,30,30,0.2), rgba(229,57,53,0.1)); }
+.player-item .avatar-sm { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 18px; margin-right: 12px; border: 1px solid #8B6914; }
+.player-item.checked .avatar-sm { border-width: 2px; border-color: #C4952A; }
+.player-item .pname { color: #F5E6C8; font-weight: bold; font-size: 16px; flex: 1; }
+.player-item .check-icon { color: #8B7355; font-size: 22px; }
+.player-item.checked .check-icon { color: #C4952A; }
+
+/* History */
+.history-item { margin: 0 12px 8px; padding: 14px; display: flex; align-items: center; cursor: pointer; }
+.history-item .date { color: #FFD54F; font-weight: bold; font-size: 14px; }
+.history-item .players { color: #8B7355; font-size: 13px; margin-top: 4px; }
+.history-item .arrow { color: #8B6914; font-size: 20px; }
+
+/* Settings */
+.setting-item { margin: 0 12px 8px; padding: 10px 16px; display: flex; align-items: center; }
+.setting-item .color-bar { width: 4px; height: 40px; border-radius: 2px; background: linear-gradient(180deg, #8B6914, #C4952A); margin-right: 12px; }
+.setting-item .avatar-sm { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 16px; margin-right: 12px; border: 2px solid #C4952A; }
+.setting-item input { flex: 1; background: transparent; border: none; border-bottom: 1px solid #8B6914; color: #F5E6C8; font-size: 14px; padding: 8px 0; outline: none; }
+.setting-item input:focus { border-bottom-color: #C4952A; border-bottom-width: 2px; }
+.setting-item label { display: none; }
+
+/* Session detail */
+.detail-header { padding: 16px; background: linear-gradient(180deg, #1C1410, #0A0A0A); border-bottom: 1px solid #8B6914; text-align: center; }
+.detail-header .date { color: #FFD54F; font-size: 14px; font-weight: bold; margin-bottom: 16px; }
+.detail-header .score-row { display: flex; justify-content: space-around; }
+.detail-header .player-col .pname { color: #F5E6C8; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+.detail-header .player-col .big-score { font-size: 28px; font-weight: bold; line-height: 1; }
+.detail-header .player-col .big-score.positive { color: #FF6B35; }
+.detail-header .player-col .big-score.negative { color: #4CAF50; }
+
+/* Empty state */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; text-align: center; padding: 40px; }
+.empty .title { color: #FFD54F; font-size: 24px; font-weight: bold; margin-bottom: 8px; }
+.empty .sub { color: #8B7355; margin-bottom: 24px; }
+.empty .start-btn { padding: 14px 32px; border: none; border-radius: 12px; background: #C41E1E; color: #F5E6C8; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+.outlined-btn { width: 100%; padding: 12px; margin: 8px 12px; border: 1px solid #8B6914; border-radius: 12px; background: transparent; color: #F5E6C8; font-size: 14px; cursor: pointer; }
+
+.section-title { display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-bottom: 6px; }
+.section-title .bar { width: 4px; height: 16px; border-radius: 2px; background: linear-gradient(180deg, #8B6914, #C4952A); }
+.section-title .text { color: #FFD54F; font-size: 16px; font-weight: bold; }
+
+.scroll { flex: 1; overflow-y: auto; padding-top: 8px; }
+.scroll::-webkit-scrollbar { width: 0; }
+
+.info { text-align: center; padding: 8px 16px; color: #8B7355; font-size: 13px; margin-bottom: 8px; }
+.info strong { color: #FFD54F; }
+
+.kick-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: #8B7355; flex-wrap: wrap; }
+.bomb-row { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 13px; color: #8B7355; }
+</style>
+</head>
+<body>
+
+<div style="display:flex;flex-direction:column;align-items:center;">
+<div class="tab-bar">
+  <button class="active" onclick="showScreen('home-empty')">首页(空)</button>
+  <button onclick="showScreen('home-session')">首页(对局中)</button>
+  <button onclick="showScreen('new-session')">新建场次</button>
+  <button onclick="showScreen('history')">历史场次</button>
+  <button onclick="showScreen('detail')">场次详情</button>
+  <button onclick="showScreen('settings')">设置</button>
+</div>
+
+<div class="phone">
+
+<!-- Screen 1: Home - Empty State -->
+<div class="screen active" id="screen-home-empty">
+  <div class="app-bar">
+    <h1>斗地主记分</h1>
+    <div class="actions">
+      <span title="历史">&#128197;</span>
+      <span title="设置">&#9881;</span>
+    </div>
+  </div>
+  <div class="empty">
+    <div class="title">开战</div>
+    <div class="sub">选择三位玩家开始记分</div>
+    <button class="start-btn">新建场次</button>
+  </div>
+</div>
+
+<!-- Screen 2: Home - In Session -->
+<div class="screen" id="screen-home-session">
+  <div class="app-bar">
+    <h1>斗地主记分</h1>
+    <div class="actions">
+      <span title="历史">&#128197;</span>
+      <span title="设置">&#9881;</span>
+    </div>
+  </div>
+  <div class="scroll">
+    <!-- Score cards -->
+    <div style="display:flex; gap:8px; padding:12px 12px 0;">
+      <div class="card score-card" style="flex:1;">
+        <div class="gold-line"></div>
+        <div class="avatar" style="background:#E53935;">张</div>
+        <div class="name">张三</div>
+        <div class="score positive">+15</div>
+      </div>
+      <div class="card score-card" style="flex:1;">
+        <div class="gold-line"></div>
+        <div class="avatar" style="background:#1E88E5;">李</div>
+        <div class="name">李四</div>
+        <div class="score negative">-8</div>
+      </div>
+      <div class="card score-card" style="flex:1;">
+        <div class="gold-line"></div>
+        <div class="avatar" style="background:#43A047;">王</div>
+        <div class="name">王五</div>
+        <div class="score negative">-7</div>
+      </div>
+    </div>
+
+    <!-- New session button -->
+    <button class="outlined-btn">新建场次</button>
+
+    <div class="gold-divider"></div>
+
+    <!-- Recent rounds -->
+    <div class="section-title">
+      <div class="bar"></div>
+      <div class="text">最近 3 局</div>
+    </div>
+
+    <!-- Round 3 -->
+    <div class="card round-tile">
+      <div class="row1">
+        <span class="tag tag-index">#3</span>
+        <span class="name">王五</span>
+        <span class="sub">地主</span>
+        <span class="tag tag-result-win">赢</span>
+        <span class="tag tag-badge">炸1</span>
+      </div>
+      <div class="row2">
+        <span class="score-text negative">张三 -4</span>
+        <span class="score-text negative">李四 -4</span>
+        <span class="score-text positive">王五 +8</span>
+      </div>
+    </div>
+
+    <!-- Round 2 -->
+    <div class="card round-tile">
+      <div class="row1">
+        <span class="tag tag-index">#2</span>
+        <span class="name">张三</span>
+        <span class="sub">地主</span>
+        <span class="tag tag-result-lose">输</span>
+        <span class="tag tag-badge">春天</span>
+      </div>
+      <div class="row2">
+        <span class="score-text negative">张三 -4</span>
+        <span class="score-text positive">李四 +2</span>
+        <span class="score-text positive">王五 +2</span>
+      </div>
+    </div>
+
+    <!-- Round 1 -->
+    <div class="card round-tile">
+      <div class="row1">
+        <span class="tag tag-index">#1</span>
+        <span class="name">李四</span>
+        <span class="sub">地主</span>
+        <span class="tag tag-result-win">赢</span>
+      </div>
+      <div class="row2">
+        <span class="score-text positive">李四 +2</span>
+        <span class="score-text negative">张三 -1</span>
+        <span class="score-text negative">王五 -1</span>
+      </div>
+    </div>
+
+    <div class="gold-divider" style="margin-top:8px;"></div>
+
+    <!-- Score input panel -->
+    <div class="card input-panel">
+      <div class="section-label">地主</div>
+      <div class="btn-row">
+        <div class="btn-option" onclick="selectLandlord(this)">张三</div>
+        <div class="btn-option selected" onclick="selectLandlord(this)">李四</div>
+        <div class="btn-option" onclick="selectLandlord(this)">王五</div>
+      </div>
+
+      <div class="section-gap"></div>
+      <div class="section-label">结果</div>
+      <div class="btn-row">
+        <div class="btn-option selected" style="background:linear-gradient(135deg,#E53935,#EF5350);border-color:#E53935;border-width:2px;">地主赢</div>
+        <div class="btn-option">地主输</div>
+      </div>
+
+      <div class="section-gap"></div>
+      <div class="section-label">加倍项</div>
+      <div class="btn-row">
+        <div class="btn-small">春天</div>
+        <div class="btn-small">蒙牌</div>
+      </div>
+
+      <div class="kick-row">
+        <span>踢：</span>
+        <div class="btn-small">张三</div>
+        <div class="btn-small selected">王五</div>
+        <div class="btn-small selected" style="margin-left:4px;">踢</div>
+        <div class="btn-small">踢+反踢</div>
+      </div>
+
+      <div class="bomb-row">
+        <span>炸弹：</span>
+        <div class="count-btn">-</div>
+        <div class="count-num">1</div>
+        <div class="count-btn">+</div>
+      </div>
+
+      <div class="preview-box">
+        <span class="label">本局 </span>
+        <span class="num">4</span>
+        <span class="label"> 分</span>
+      </div>
+
+      <button class="submit-btn">确认记分</button>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 3: New Session -->
+<div class="screen" id="screen-new-session">
+  <div class="app-bar"><h1>新建场次</h1></div>
+  <div class="info">选择 3 位上场玩家（已选 <strong>2</strong>/3）</div>
+  <div class="scroll">
+    <div class="card player-item checked">
+      <div class="avatar-sm" style="background:#E53935;">张</div>
+      <div class="pname">张三</div>
+      <div class="check-icon">&#10003;</div>
+    </div>
+    <div class="card player-item checked">
+      <div class="avatar-sm" style="background:#1E88E5;">李</div>
+      <div class="pname">李四</div>
+      <div class="check-icon">&#10003;</div>
+    </div>
+    <div class="card player-item" onclick="this.classList.toggle('checked')">
+      <div class="avatar-sm" style="background:#43A047;">王</div>
+      <div class="pname">王五</div>
+      <div class="check-icon">&#9675;</div>
+    </div>
+    <div class="card player-item" onclick="this.classList.toggle('checked')">
+      <div class="avatar-sm" style="background:#FB8C00;">赵</div>
+      <div class="pname">赵六</div>
+      <div class="check-icon">&#9675;</div>
+    </div>
+    <div class="card player-item" onclick="this.classList.toggle('checked')">
+      <div class="avatar-sm" style="background:#8E24AA;">孙</div>
+      <div class="pname">孙七</div>
+      <div class="check-icon">&#9675;</div>
+    </div>
+  </div>
+  <div style="padding:16px;">
+    <button class="submit-btn" disabled>开始</button>
+  </div>
+</div>
+
+<!-- Screen 4: History -->
+<div class="screen" id="screen-history">
+  <div class="app-bar"><h1>历史场次</h1></div>
+  <div class="scroll" style="padding:12px;">
+    <div class="card history-item">
+      <div style="flex:1;">
+        <div class="date">2025-05-21 20:30</div>
+        <div class="players">张三  李四  王五</div>
+      </div>
+      <div class="arrow">&#8250;</div>
+    </div>
+    <div class="card history-item">
+      <div style="flex:1;">
+        <div class="date">2025-05-20 14:15</div>
+        <div class="players">张三  赵六  孙七</div>
+      </div>
+      <div class="arrow">&#8250;</div>
+    </div>
+    <div class="card history-item">
+      <div style="flex:1;">
+        <div class="date">2025-05-18 21:00</div>
+        <div class="players">李四  王五  赵六</div>
+      </div>
+      <div class="arrow">&#8250;</div>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 5: Session Detail -->
+<div class="screen" id="screen-detail">
+  <div class="app-bar"><h1>场次详情</h1></div>
+  <div class="detail-header">
+    <div class="date">2025-05-21 20:30</div>
+    <div class="score-row">
+      <div class="player-col">
+        <div class="pname">张三</div>
+        <div class="big-score positive">+15</div>
+      </div>
+      <div class="player-col">
+        <div class="pname">李四</div>
+        <div class="big-score negative">-8</div>
+      </div>
+      <div class="player-col">
+        <div class="pname">王五</div>
+        <div class="big-score negative">-7</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll" style="padding:12px;">
+    <div class="card round-tile">
+      <div class="row1">
+        <span class="tag tag-index">#3</span>
+        <span class="name">王五</span>
+        <span class="sub">地主</span>
+        <span class="tag tag-result-win">赢</span>
+        <span class="tag tag-badge">炸1</span>
+      </div>
+      <div class="row2">
+        <span class="score-text negative">张三 -4</span>
+        <span class="score-text negative">李四 -4</span>
+        <span class="score-text positive">王五 +8</span>
+      </div>
+    </div>
+    <div class="card round-tile">
+      <div class="row1">
+        <span class="tag tag-index">#2</span>
+        <span class="name">张三</span>
+        <span class="sub">地主</span>
+        <span class="tag tag-result-lose">输</span>
+        <span class="tag tag-badge">春天</span>
+      </div>
+      <div class="row2">
+        <span class="score-text negative">张三 -4</span>
+        <span class="score-text positive">李四 +2</span>
+        <span class="score-text positive">王五 +2</span>
+      </div>
+    </div>
+    <div class="card round-tile">
+      <div class="row1">
+        <span class="tag tag-index">#1</span>
+        <span class="name">李四</span>
+        <span class="sub">地主</span>
+        <span class="tag tag-result-win">赢</span>
+      </div>
+      <div class="row2">
+        <span class="score-text positive">李四 +2</span>
+        <span class="score-text negative">张三 -1</span>
+        <span class="score-text negative">王五 -1</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 6: Settings -->
+<div class="screen" id="screen-settings">
+  <div class="app-bar"><h1>设置</h1></div>
+  <div class="scroll">
+    <div class="card setting-item">
+      <div class="color-bar"></div>
+      <div class="avatar-sm" style="background:#E53935;">张</div>
+      <input type="text" value="张三">
+    </div>
+    <div class="card setting-item">
+      <div class="color-bar"></div>
+      <div class="avatar-sm" style="background:#1E88E5;">李</div>
+      <input type="text" value="李四">
+    </div>
+    <div class="card setting-item">
+      <div class="color-bar"></div>
+      <div class="avatar-sm" style="background:#43A047;">王</div>
+      <input type="text" value="王五">
+    </div>
+    <div class="card setting-item">
+      <div class="color-bar"></div>
+      <div class="avatar-sm" style="background:#FB8C00;">赵</div>
+      <input type="text" value="赵六">
+    </div>
+    <div class="card setting-item">
+      <div class="color-bar"></div>
+      <div class="avatar-sm" style="background:#8E24AA;">孙</div>
+      <input type="text" value="孙七">
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function selectLandlord(el) {
+  el.parentElement.querySelectorAll('.btn-option').forEach(b => {
+    b.classList.remove('selected');
+    b.style.background = '';
+    b.style.borderColor = '';
+  });
+  el.classList.add('selected');
+}
+
+// Toggle player items in new-session screen
+document.querySelectorAll('.player-item').forEach(item => {
+  item.addEventListener('click', () => {
+    item.classList.toggle('checked');
+    const icon = item.querySelector('.check-icon');
+    icon.innerHTML = item.classList.contains('checked') ? '&#10003;' : '&#9675;';
+  });
+});
+</script>
+
+</body>
+</html>
