@@ -216,7 +216,7 @@ Run:
 
 ```powershell
 node --test doudizhu_app/test/pwa_assets.test.mjs
-node --test doudizhu_app/test/
+node --test "doudizhu_app/test/*.test.mjs"
 ```
 
 Expected: 2 asset tests pass; all existing 28 interaction tests also pass.
@@ -427,7 +427,7 @@ self.addEventListener('fetch', event => {
 
 ```powershell
 node --test doudizhu_app/test/service_worker.test.mjs
-node --test doudizhu_app/test/
+node --test "doudizhu_app/test/*.test.mjs"
 ```
 
 Expected: all Service Worker tests and all prior tests pass.
@@ -648,7 +648,7 @@ if (typeof window.addEventListener === 'function') {
 
 ```powershell
 node --test doudizhu_app/test/preview_interactions.test.mjs
-node --test doudizhu_app/test/
+node --test "doudizhu_app/test/*.test.mjs"
 ```
 
 Expected: all PWA page tests and all prior tests pass with no thrown startup error.
@@ -704,7 +704,7 @@ Add sections to `运行指南.md` that state:
 - [ ] **Step 4: Run all automated verification**
 
 ```powershell
-node --test doudizhu_app/test/
+node --test "doudizhu_app/test/*.test.mjs"
 git diff --check
 ```
 
@@ -755,7 +755,7 @@ Temporarily increment `CACHE_NAME` in the worktree, reload online, verify the �
 ```powershell
 git diff --check
 git status --short
-node --test doudizhu_app/test/
+node --test "doudizhu_app/test/*.test.mjs"
 ```
 
 Expected: no temporary cache-version change remains; the worktree contains only intended committed changes; all tests pass.

@@ -208,7 +208,7 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
    - 测试不得让 `localStorage` 与 Cache Storage 产生交叉污染。
 4. **既有功能回归**：保留并继续通过 `preview_interactions.test.mjs` 验证记分、撤回、结束场次、数据持久化与损坏回退不受 PWA 改造影响。
 
-测试命令：`node --test doudizhu_app/test/`（与现状一致，零额外依赖）。
+测试命令：`node --test "doudizhu_app/test/*.test.mjs"`（覆盖全部 Node 测试文件，零额外依赖）。
 
 ## 浏览器人工验收标准
 
