@@ -542,9 +542,12 @@ test('waiting worker is shown and update button sends SKIP_WAITING', async () =>
   assert.deepEqual(fakes.messages, [{ type: 'SKIP_WAITING' }]);
 });
 
-test('controllerchange reloads once and registration failure degrades safely', async () => {
-  const fakes = createPwaFakes();
+test('controllerchange reloads only after an explicit waiting-worker update request', async () => {
+  const fakes = createPwaFakes({ waiting: true });
   await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
+  await fakes.fireServiceWorker('controllerchange');
+  assert.equal(fakes.reloadCalls, 0);
+  await fakes.clickUpdate();
   await fakes.fireServiceWorker('controllerchange');
   await fakes.fireServiceWorker('controllerchange');
   assert.equal(fakes.reloadCalls, 1);
@@ -583,7 +586,7 @@ Add before `#toast`:
 </div>
 ```
 
-Add CSS that fixes the notice above the bottom safe area, uses the existing dark/gold/red palette, and preserves the current mobile width.
+Add CSS that fixes the notice above the bottom safe area, uses the existing dark/gold/red palette, preserves the current mobile width, and includes `.update-notice[hidden] { display: none; }`.
 
 Add the two exported functions before `window.previewApp` is assigned:
 
@@ -600,6 +603,7 @@ async function setupPwaUpdates(deps) {
   try {
     const registration = await navigatorObj.serviceWorker.register('./sw.js', { scope: './' });
     let refreshing = false;
+    let updateRequested = false;
     const showWaiting = () => {
       if (!registration.waiting || !banner) return;
       banner.hidden = false;
@@ -613,10 +617,14 @@ async function setupPwaUpdates(deps) {
       });
     });
     if (updateButton) updateButton.addEventListener('click', () => {
-      if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      if (!registration.waiting) return;
+      try {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        updateRequested = true;
+      } catch (_) {}
     });
     navigatorObj.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
+      if (!updateRequested || refreshing) return;
       refreshing = true;
       windowObj.location.reload();
     });
@@ -699,7 +707,7 @@ Add sections to `运行指南.md` that state:
 - Android: Chrome → menu → 添加到主屏幕/安装应用.
 - First open once while online, then enable airplane mode and verify open/new session/score/undo/history/relaunch.
 - Scores remain in the current phone’s `localStorage` and do not sync.
-- Every shell release must change `CACHE_NAME` from `doudizhu-shell-v1` to the next version in `sw.js`; after restoring internet the page checks on load/online, shows the update notice, and activates only after “立即更新” or closing all old pages.
+- `sw.js` declares `CACHE_NAME` as `CACHE_PREFIX + 'v1'`; every shell release must increment only the suffix (`'v1'` → `'v2'` → `'v3'`) while preserving `CACHE_PREFIX = 'doudizhu-shell-'`. After restoring internet, the page checks on load/online, shows the update notice, and activates only after “立即更新” or closing all old pages.
 
 - [ ] **Step 4: Run all automated verification**
 
@@ -750,7 +758,7 @@ Create a session and record one round while online. Switch browser network emula
 
 - [ ] **Step 4: Verify safe update behavior**
 
-Temporarily increment `CACHE_NAME` in the worktree, reload online, verify the “发现新版本” notice appears, click “立即更新”, and verify exactly one reload. Restore the intended committed cache name afterward and run:
+Temporarily increment the `CACHE_NAME` suffix in the worktree, reload online, verify the “发现新版本” notice appears, click “立即更新”, and verify exactly one reload. Restore the intended committed suffix afterward and run:
 
 ```powershell
 git diff --check
