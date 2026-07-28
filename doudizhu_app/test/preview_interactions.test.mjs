@@ -550,6 +550,20 @@ test('preview page menu starts closed and the handle toggles it accessibly', () 
   assert.equal(menu.getAttribute('aria-hidden'), 'true');
 });
 
+test('preview menu CSS removes the closed menu from layout and shows .open', () => {
+  const html = readPreview();
+  assert.match(html, /\.tab-bar\s*\{[^}]*display:\s*none\s*;[^}]*\}/s);
+  assert.match(html, /\.tab-bar\.open\s*\{[^}]*display:\s*flex\s*;[^}]*\}/s);
+});
+
+test('preview menu handle has a centered 44px touch target', () => {
+  const html = readPreview();
+  const rule = html.match(/\.preview-menu-handle\s*\{([^}]*)\}/s)?.[1] || '';
+  assert.match(rule, /width:\s*44px\s*;/);
+  assert.match(rule, /height:\s*44px\s*;/);
+  assert.match(rule, /place-items:\s*center\s*;/);
+});
+
 test('preview menu pull gesture only reveals at page top after a 48px downward pull', () => {
   const { window } = loadPreview();
   const shouldReveal = window.previewApp.shouldRevealPreviewMenu;
