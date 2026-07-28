@@ -1,4 +1,5 @@
-const CACHE_PREFIX = 'doudizhu-shell-';
+const SCOPE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') || '/';
+const CACHE_PREFIX = `doudizhu-shell-${encodeURIComponent(SCOPE_PATH)}::`;
 const CACHE_NAME = CACHE_PREFIX + 'v1';
 const SHELL_PATHS = [
   './preview.html',
@@ -11,11 +12,7 @@ const SHELL_PATHS = [
 const shellUrls = () => SHELL_PATHS.map(path => new URL(path, self.registration.scope).href);
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(async cache => {
-    for (const url of shellUrls()) {
-      try { await cache.add(url); } catch (_) {}
-    }
-  }));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(shellUrls())));
 });
 
 self.addEventListener('activate', event => {
@@ -36,19 +33,19 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== new URL(self.registration.scope).origin) return;
   event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
     const known = shellUrls().includes(request.url);
     if (known || request.mode === 'navigate') {
-      return (await caches.match(request)) ||
-        (request.mode === 'navigate' && await caches.match(new URL('./preview.html', self.registration.scope).href)) ||
+      return (await cache.match(request)) ||
+        (request.mode === 'navigate' && await cache.match(new URL('./preview.html', self.registration.scope).href)) ||
         fetch(request);
     }
     try {
       const response = await fetch(request);
-      const cache = await caches.open(CACHE_NAME);
       await cache.put(request, response.clone());
       return response;
     } catch (_) {
-      return (await caches.match(request)) ||
+      return (await cache.match(request)) ||
         new Response('当前离线，资源尚未缓存。', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
   })());

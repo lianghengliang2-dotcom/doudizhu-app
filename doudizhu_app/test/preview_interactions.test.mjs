@@ -643,6 +643,7 @@ test('script executes without throwing on load', () => {
 
 function createPwaFakes(options = {}) {
   const windowHandlers = new Map();
+  const documentHandlers = new Map();
   const workerHandlers = new Map();
   const registrationHandlers = new Map();
   const installingHandlers = new Map();
@@ -676,11 +677,16 @@ function createPwaFakes(options = {}) {
     location: { reload: () => { reloadCalls += 1; } },
     addEventListener: (type, handler) => windowHandlers.set(type, handler),
   };
+  const documentObj = {
+    visibilityState: options.visibilityState || 'visible',
+    addEventListener: (type, handler) => documentHandlers.set(type, handler),
+  };
   return {
     deps: {
       navigatorObj: { serviceWorker },
       windowObj,
       locationObj: { protocol: 'https:', hostname: 'example.test' },
+      documentObj,
       banner,
       updateButton,
     },
@@ -690,6 +696,8 @@ function createPwaFakes(options = {}) {
     get updateCalls() { return updateCalls; },
     get reloadCalls() { return reloadCalls; },
     async fireWindow(type) { await windowHandlers.get(type)?.(); },
+    async fireDocument(type) { await documentHandlers.get(type)?.(); },
+    setVisibility(state) { documentObj.visibilityState = state; },
     async fireServiceWorker(type) { await workerHandlers.get(type)?.(); },
     async clickUpdate() { await buttonHandlers.get('click')?.(); },
   };
@@ -713,13 +721,19 @@ test('service worker eligibility accepts HTTPS and local development only', () =
   assert.equal(app.canUseServiceWorker({ protocol: 'file:', hostname: '' }, { serviceWorker: {} }), false);
 });
 
-test('setup registers relative scope and checks on load and online', async () => {
+test('setup registers relative scope and checks on load, online, and return to foreground', async () => {
   const fakes = createPwaFakes();
   await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
   assert.deepEqual(JSON.parse(JSON.stringify(fakes.registerCalls)), [['./sw.js', { scope: './' }]]);
   assert.equal(fakes.updateCalls, 1);
   await fakes.fireWindow('online');
   assert.equal(fakes.updateCalls, 2);
+  fakes.setVisibility('hidden');
+  await fakes.fireDocument('visibilitychange');
+  assert.equal(fakes.updateCalls, 2);
+  fakes.setVisibility('visible');
+  await fakes.fireDocument('visibilitychange');
+  assert.equal(fakes.updateCalls, 3);
 });
 
 test('waiting worker is shown and update button sends SKIP_WAITING', async () => {

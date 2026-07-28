@@ -350,7 +350,7 @@
       (locationObj.protocol === 'http:' && (locationObj.hostname === 'localhost' || locationObj.hostname === '127.0.0.1'));
   }
   async function setupPwaUpdates(deps) {
-    const { navigatorObj, windowObj, locationObj, banner, updateButton } = deps;
+    const { navigatorObj, windowObj, locationObj, documentObj, banner, updateButton } = deps;
     if (!canUseServiceWorker(locationObj, navigatorObj)) return null;
     try {
       const registration = await navigatorObj.serviceWorker.register('./sw.js', { scope: './' });
@@ -383,6 +383,11 @@
       const check = () => registration.update().catch(() => {});
       check();
       windowObj.addEventListener('online', check);
+      if (documentObj && typeof documentObj.addEventListener === 'function') {
+        documentObj.addEventListener('visibilitychange', () => {
+          if (documentObj.visibilityState === 'visible') check();
+        });
+      }
       return registration;
     } catch (_) {
       return null;
@@ -616,6 +621,7 @@
       navigatorObj: window.navigator,
       windowObj: window,
       locationObj: window.location,
+      documentObj: document,
       banner: byId('pwa-update'),
       updateButton: byId('pwa-update-now'),
     }));
