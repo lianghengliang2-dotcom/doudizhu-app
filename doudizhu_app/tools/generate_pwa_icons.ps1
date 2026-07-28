@@ -50,7 +50,8 @@ function New-PwaIcon {
     $labelY = [single]($Size * 0.52)
     $labelW = [single]$Size
     $labelH = [single]($Size * 0.24)
-    $graphics.DrawString('DDZ', $font, $gold, $labelX, $labelY, $format)
+    $labelRect = New-Object System.Drawing.RectangleF($labelX, $labelY, $labelW, $labelH)
+    $graphics.DrawString('DDZ', $font, $gold, $labelRect, $format)
     $bitmap.Save((Join-Path $iconRoot $FileName), [System.Drawing.Imaging.ImageFormat]::Png)
   }
   finally {

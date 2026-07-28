@@ -39,3 +39,23 @@ test('manifest declares any and maskable PNG icons at 192 and 512', async () => 
     assert.deepEqual(await pngSize(src.slice(2)), { width: expected, height: expected });
   }
 });
+
+test('manifest icons declare image/png MIME type', async () => {
+  const manifest = JSON.parse(await readFile(join(root, 'manifest.webmanifest'), 'utf8'));
+  assert.equal(manifest.icons.length, 4);
+  for (const icon of manifest.icons) {
+    assert.equal(icon.type, 'image/png');
+  }
+});
+
+test('generator centers the DDZ label with a RectangleF DrawString overload', async () => {
+  const source = await readFile(join(root, 'tools/generate_pwa_icons.ps1'), 'utf8');
+  assert.ok(
+    source.includes('New-Object System.Drawing.RectangleF($labelX, $labelY, $labelW, $labelH)'),
+    'expected a RectangleF built from the precomputed label coordinates'
+  );
+  assert.ok(
+    source.includes("DrawString('DDZ', $font, $gold, $labelRect, $format)"),
+    'expected the five-argument RectangleF DrawString overload'
+  );
+});
