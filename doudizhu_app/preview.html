@@ -1,493 +1,559 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>斗地主记分 - 界面预览</title>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px; }
-
-/* Tab bar */
-.tab-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center; }
-.tab-bar button { padding: 8px 16px; border: 1px solid #8B6914; border-radius: 8px; background: #1C1410; color: #F5E6C8; cursor: pointer; font-size: 13px; font-weight: bold; transition: all .2s; }
-.tab-bar button:hover { border-color: #C4952A; }
-.tab-bar button.active { background: #C41E1E; border-color: #C4952A; }
-
-/* Phone frame */
-.phone { width: 390px; min-height: 720px; background: #0A0A0A; border-radius: 24px; border: 3px solid #333; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
-.screen { display: none; flex-direction: column; height: 100%; min-height: 720px; }
-.screen.active { display: flex; }
-
-/* App bar */
-.app-bar { padding: 16px 16px 12px; display: flex; align-items: center; justify-content: space-between; }
-.app-bar h1 { color: #F5E6C8; font-size: 20px; font-weight: bold; }
-.app-bar .actions { display: flex; gap: 8px; }
-.app-bar .actions span { color: #F5E6C8; font-size: 20px; cursor: pointer; opacity: 0.7; }
-
-/* Cards */
-.card { background: linear-gradient(135deg, #1C1410, #2A1F18); border: 1px solid #8B6914; border-radius: 12px; }
-
-/* Score card */
-.score-card { text-align: center; padding: 16px 12px; border: 2px solid #C4952A; box-shadow: 0 2px 8px rgba(139,105,20,0.2); }
-.score-card .gold-line { height: 3px; margin-bottom: 8px; background: linear-gradient(90deg, #8B6914, #C4952A, #8B6914); border-radius: 2px; }
-.score-card .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; border: 2px solid #C4952A; color: #fff; font-weight: bold; font-size: 18px; }
-.score-card .name { color: #F5E6C8; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
-.score-card .score { font-size: 32px; font-weight: bold; line-height: 1; }
-.score-card .score.positive { color: #FF6B35; }
-.score-card .score.negative { color: #4CAF50; }
-
-/* Divider */
-.gold-divider { height: 1px; background: linear-gradient(90deg, transparent, #8B6914, transparent); margin: 8px 12px; }
-
-/* Round record */
-.round-tile { margin: 3px 12px; padding: 12px; border-radius: 10px; }
-.round-tile .row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.round-tile .tag { padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-.round-tile .tag-index { background: rgba(196,149,42,0.15); color: #FFD54F; border: 1px solid #8B6914; }
-.round-tile .tag-result-win { background: rgba(229,57,53,0.15); color: #E53935; border: 1px solid #E53935; }
-.round-tile .tag-result-lose { background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid #4CAF50; }
-.round-tile .tag-badge { background: rgba(196,149,42,0.2); color: #FFD54F; border: 1px solid #8B6914; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
-.round-tile .name { color: #F5E6C8; font-weight: bold; }
-.round-tile .sub { color: #8B7355; }
-.round-tile .row2 { display: flex; justify-content: space-between; }
-.round-tile .score-text { font-size: 13px; font-weight: 600; }
-.round-tile .score-text.positive { color: #FF6B35; }
-.round-tile .score-text.negative { color: #4CAF50; }
-
-/* Input panel */
-.input-panel { margin: 0 12px 24px; padding: 16px; }
-.input-panel .section-label { color: #FFD54F; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
-.input-panel .section-gap { height: 12px; }
-.btn-row { display: flex; gap: 6px; }
-.btn-option { flex: 1; padding: 10px 0; text-align: center; border-radius: 8px; border: 1px solid #8B6914; background: #1C1410; color: #8B7355; font-weight: bold; cursor: pointer; transition: all .15s; font-size: 14px; }
-.btn-option.selected { background: linear-gradient(135deg, #C41E1E, #E53935); border-color: #C4952A; border-width: 2px; color: #F5E6C8; }
-.btn-option.selected-green { background: linear-gradient(135deg, #2E7D32, #4CAF50); border-color: #4CAF50; border-width: 2px; color: #F5E6C8; }
-.btn-small { padding: 6px 10px; border-radius: 6px; border: 1px solid #8B6914; background: #1C1410; color: #8B7355; font-size: 13px; cursor: pointer; transition: all .15s; }
-.btn-small.selected { background: linear-gradient(135deg, #C41E1E, #E53935); border-color: #C4952A; border-width: 2px; color: #F5E6C8; font-weight: bold; }
-.preview-box { margin-top: 14px; padding: 12px; text-align: center; border-radius: 8px; border: 1px solid #C4952A; background: linear-gradient(135deg, rgba(196,30,30,0.2), rgba(229,57,53,0.1)); }
-.preview-box .label { color: #8B7355; }
-.preview-box .num { color: #FFD54F; font-size: 32px; font-weight: bold; line-height: 1; }
-.submit-btn { width: 100%; padding: 14px; margin-top: 12px; border: none; border-radius: 12px; background: #C41E1E; color: #F5E6C8; font-size: 16px; font-weight: bold; cursor: pointer; }
-.submit-btn:disabled { opacity: 0.5; cursor: default; }
-.count-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #C4952A; background: #1C1410; color: #FFD54F; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.count-num { width: 36px; text-align: center; color: #FFD54F; font-size: 18px; font-weight: bold; line-height: 36px; }
-
-/* New session */
-.player-item { margin: 0 12px 8px; padding: 14px; display: flex; align-items: center; border-radius: 12px; cursor: pointer; transition: all .15s; }
-.player-item.checked { border-color: #C4952A; border-width: 2px; background: linear-gradient(135deg, rgba(196,30,30,0.2), rgba(229,57,53,0.1)); }
-.player-item .avatar-sm { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 18px; margin-right: 12px; border: 1px solid #8B6914; }
-.player-item.checked .avatar-sm { border-width: 2px; border-color: #C4952A; }
-.player-item .pname { color: #F5E6C8; font-weight: bold; font-size: 16px; flex: 1; }
-.player-item .check-icon { color: #8B7355; font-size: 22px; }
-.player-item.checked .check-icon { color: #C4952A; }
-
-/* History */
-.history-item { margin: 0 12px 8px; padding: 14px; display: flex; align-items: center; cursor: pointer; }
-.history-item .date { color: #FFD54F; font-weight: bold; font-size: 14px; }
-.history-item .players { color: #8B7355; font-size: 13px; margin-top: 4px; }
-.history-item .arrow { color: #8B6914; font-size: 20px; }
-
-/* Settings */
-.setting-item { margin: 0 12px 8px; padding: 10px 16px; display: flex; align-items: center; }
-.setting-item .color-bar { width: 4px; height: 40px; border-radius: 2px; background: linear-gradient(180deg, #8B6914, #C4952A); margin-right: 12px; }
-.setting-item .avatar-sm { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 16px; margin-right: 12px; border: 2px solid #C4952A; }
-.setting-item input { flex: 1; background: transparent; border: none; border-bottom: 1px solid #8B6914; color: #F5E6C8; font-size: 14px; padding: 8px 0; outline: none; }
-.setting-item input:focus { border-bottom-color: #C4952A; border-bottom-width: 2px; }
-.setting-item label { display: none; }
-
-/* Session detail */
-.detail-header { padding: 16px; background: linear-gradient(180deg, #1C1410, #0A0A0A); border-bottom: 1px solid #8B6914; text-align: center; }
-.detail-header .date { color: #FFD54F; font-size: 14px; font-weight: bold; margin-bottom: 16px; }
-.detail-header .score-row { display: flex; justify-content: space-around; }
-.detail-header .player-col .pname { color: #F5E6C8; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-.detail-header .player-col .big-score { font-size: 28px; font-weight: bold; line-height: 1; }
-.detail-header .player-col .big-score.positive { color: #FF6B35; }
-.detail-header .player-col .big-score.negative { color: #4CAF50; }
-
-/* Empty state */
-.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; text-align: center; padding: 40px; }
-.empty .title { color: #FFD54F; font-size: 24px; font-weight: bold; margin-bottom: 8px; }
-.empty .sub { color: #8B7355; margin-bottom: 24px; }
-.empty .start-btn { padding: 14px 32px; border: none; border-radius: 12px; background: #C41E1E; color: #F5E6C8; font-size: 16px; font-weight: bold; cursor: pointer; }
-
-.outlined-btn { width: 100%; padding: 12px; margin: 8px 12px; border: 1px solid #8B6914; border-radius: 12px; background: transparent; color: #F5E6C8; font-size: 14px; cursor: pointer; }
-
-.section-title { display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-bottom: 6px; }
-.section-title .bar { width: 4px; height: 16px; border-radius: 2px; background: linear-gradient(180deg, #8B6914, #C4952A); }
-.section-title .text { color: #FFD54F; font-size: 16px; font-weight: bold; }
-
-.scroll { flex: 1; overflow-y: auto; padding-top: 8px; }
-.scroll::-webkit-scrollbar { width: 0; }
-
-.info { text-align: center; padding: 8px 16px; color: #8B7355; font-size: 13px; margin-bottom: 8px; }
-.info strong { color: #FFD54F; }
-
-.kick-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: #8B7355; flex-wrap: wrap; }
-.bomb-row { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 13px; color: #8B7355; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>斗地主记分 - 交互预览</title>
+  <style>
+    :root {
+      --bg: #151515; --phone: #090909; --panel: #18130f; --card: #201914;
+      --gold: #e2b84b; --gold-soft: #8b6914; --red: #c82121; --text: #f5e6c8;
+      --muted: #a28c70; --green: #4caf6a; --blue: #4185d7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", system-ui, sans-serif; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    .preview-shell { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
+    .tab-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 16px; }
+    .tab-bar button { padding: 8px 15px; border: 1px solid var(--gold-soft); border-radius: 8px; background: #1c1410; color: var(--text); font-weight: 700; }
+    .tab-bar button:hover, .tab-bar button.active { border-color: var(--gold); }
+    .tab-bar button.active { background: var(--red); }
+    .phone { width: min(100%, 430px); min-height: 690px; margin: 0 auto; border: 3px solid #303030; border-radius: 26px; overflow: hidden; background: var(--phone); box-shadow: 0 20px 70px #0008; }
+    .screen { display: none; min-height: 684px; }
+    .screen.active { display: block; }
+    .app-bar { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #282018; }
+    .app-bar h1 { margin: 0; font-size: 21px; }
+    .actions { display: flex; gap: 8px; }
+    .icon-btn, .back-btn { border: 1px solid #3b3025; border-radius: 9px; padding: 7px 10px; background: #16110d; color: var(--text); }
+    .content { padding: 18px; }
+    .hero { min-height: 545px; display: grid; place-content: center; text-align: center; gap: 12px; }
+    .hero-symbol { font-size: 48px; }
+    .hero h2 { margin: 0; color: var(--gold); font-size: 27px; }
+    .hero p, .hint, .muted { color: var(--muted); }
+    .primary, .danger, .secondary { border-radius: 12px; padding: 12px 18px; font-weight: 800; }
+    .primary { border: 1px solid #ef4438; background: var(--red); color: white; }
+    .secondary { border: 1px solid var(--gold-soft); background: #1b1510; color: var(--text); }
+    .danger { border: 1px solid #6c2929; background: #321515; color: #ffb1aa; }
+    .wide { width: 100%; }
+    .card { background: var(--card); border: 1px solid #3a2d22; border-radius: 14px; padding: 14px; }
+    .section-title { margin: 18px 0 9px; color: var(--gold); font-size: 15px; }
+    .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .score-card { position: relative; overflow: hidden; text-align: center; padding: 15px 7px 13px; border-top: 4px solid var(--player-color); background: linear-gradient(180deg, #282018 0, var(--card) 34%); }
+    .player-name { display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: #fff4df; font-size: 18px; font-weight: 900; letter-spacing: .04em; }
+    .player-name::before { content: ""; width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--player-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--player-color) 25%, transparent); }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 7px; color: white; font-weight: 900; }
+    .score { margin-top: 7px; font-size: 27px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .score.positive { color: #f2c95f; }
+    .score.negative { color: #72cda1; }
+    .score.zero { color: var(--muted); }
+    .toolbar { display: flex; gap: 8px; margin: 12px 0; }
+    .toolbar > * { flex: 1; }
+    .round-row, .history-item { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 8px; }
+    .empty-card { text-align: center; color: var(--muted); padding: 20px; }
+    .player-list { display: grid; gap: 9px; }
+    .player-item { display: flex; align-items: center; gap: 11px; cursor: pointer; transition: .15s; }
+    .player-item.checked { border-color: var(--gold); background: #2a2117; }
+    .player-item .check-icon { margin-left: auto; color: var(--gold); font-size: 20px; }
+    .selection-status { min-height: 24px; text-align: center; margin: 12px 0; color: var(--muted); }
+    .option-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .btn-option { border: 1px solid #4a3a2b; background: #17120f; color: var(--text); border-radius: 10px; padding: 10px 6px; text-align: center; }
+    .btn-option.selected { border-color: var(--gold); background: #392b14; color: #ffe79a; }
+    .btn-option.landlord-option { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-top: 3px solid var(--player-color); padding: 8px 6px 10px; }
+    .btn-option.landlord-option.selected { border-top-color: var(--player-color); }
+    .player-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--player-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--player-color) 24%, transparent); }
+    .player-label { font-weight: 700; }
+    .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .toggle { border: 1px solid #4a3a2b; background: #17120f; color: var(--text); border-radius: 10px; padding: 10px; }
+    .toggle.selected { background: var(--red); border-color: #ef4438; }
+    .check-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .check-row label { flex: 1; min-width: 100px; border: 1px solid #3b3025; border-radius: 10px; padding: 10px; background: #17120f; }
+    .bomb-row { display: flex; justify-content: center; align-items: center; gap: 16px; }
+    .bomb-row button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--gold-soft); background: #17120f; color: var(--text); font-size: 20px; }
+    .preview-score { text-align: center; font-size: 19px; color: var(--gold); padding: 13px; margin: 12px 0; }
+    .feedback { min-height: 22px; margin: 8px 0; color: #ffb4a8; text-align: center; }
+    .history-item { width: 100%; color: var(--text); text-align: left; cursor: pointer; }
+    .history-item strong { display: block; }
+    .history-item span { color: var(--muted); font-size: 13px; }
+    .setting-item { display: grid; grid-template-columns: 38px 1fr; gap: 11px; align-items: center; margin-bottom: 9px; }
+    .setting-item input { width: 100%; background: #0f0d0b; border: 1px solid #4a3a2b; border-radius: 9px; padding: 10px; color: var(--text); }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: #f5e6c8; color: #2a1d11; border-radius: 10px; padding: 10px 16px; font-weight: 700; transition: .2s; z-index: 20; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @media (max-width: 480px) { .preview-shell { padding: 8px 0 24px; } .phone { border-radius: 0; border-left: 0; border-right: 0; } }
+  </style>
 </head>
 <body>
+<div class="preview-shell">
+  <nav class="tab-bar" aria-label="预览页面">
+    <button class="active" data-screen="home-empty">首页(空)</button>
+    <button data-screen="home-session">首页(对局中)</button>
+    <button data-screen="new-session">新建场次</button>
+    <button data-screen="history">历史场次</button>
+    <button data-screen="detail">场次详情</button>
+    <button data-screen="settings">设置</button>
+  </nav>
 
-<div style="display:flex;flex-direction:column;align-items:center;">
-<div class="tab-bar">
-  <button class="active" onclick="showScreen('home-empty')">首页(空)</button>
-  <button onclick="showScreen('home-session')">首页(对局中)</button>
-  <button onclick="showScreen('new-session')">新建场次</button>
-  <button onclick="showScreen('history')">历史场次</button>
-  <button onclick="showScreen('detail')">场次详情</button>
-  <button onclick="showScreen('settings')">设置</button>
+  <main class="phone">
+    <section class="screen active" id="screen-home-empty">
+      <header class="app-bar">
+        <h1>斗地主记分</h1>
+        <div class="actions">
+          <button class="icon-btn internal-history" aria-label="历史">📅</button>
+          <button class="icon-btn internal-settings" aria-label="设置">⚙</button>
+        </div>
+      </header>
+      <div class="content hero">
+        <div class="hero-symbol">♠</div>
+        <h2>开战</h2>
+        <p>选择三位玩家开始记分</p>
+        <button class="primary start-btn">新建场次</button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-home-session">
+      <header class="app-bar">
+        <h1>斗地主记分</h1>
+        <div class="actions">
+          <button class="icon-btn internal-history" aria-label="历史">📅</button>
+          <button class="icon-btn internal-settings" aria-label="设置">⚙</button>
+        </div>
+      </header>
+      <div class="content">
+        <div id="session-empty-note" class="card empty-card">暂无进行中的场次</div>
+        <div id="session-workspace">
+          <div id="score-grid" class="score-grid"></div>
+          <div class="toolbar">
+            <button id="new-session-during" class="secondary">新建场次</button>
+            <button id="undo-last-round" class="secondary" disabled>撤回上一局</button>
+            <button id="end-session" class="danger">结束场次</button>
+          </div>
+          <h2 class="section-title">最近三局</h2>
+          <div id="recent-rounds"></div>
+          <h2 class="section-title">本局记分</h2>
+          <div class="card">
+            <div class="muted">选择地主</div>
+            <div id="landlord-options" class="option-grid"></div>
+            <div class="muted section-title">胜负</div>
+            <div class="toggle-grid">
+              <button id="landlord-win" class="toggle">地主赢</button>
+              <button id="landlord-loss" class="toggle">地主输</button>
+            </div>
+            <div class="muted section-title">踢 / 反踢</div>
+            <div id="kick-options" class="option-grid"></div>
+            <div class="muted section-title">炸弹数</div>
+            <div class="bomb-row">
+              <button id="bomb-minus" aria-label="减少炸弹">−</button>
+              <strong id="bomb-count">0</strong>
+              <button id="bomb-plus" aria-label="增加炸弹">＋</button>
+            </div>
+            <div id="round-preview" class="card preview-score">请选择地主和胜负</div>
+            <div id="round-feedback" class="feedback"></div>
+            <button id="confirm-round" class="primary wide" disabled>确认记分</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-new-session">
+      <header class="app-bar"><button class="back-btn go-home">← 返回</button><h1>新建场次</h1><span></span></header>
+      <div class="content">
+        <p class="hint">请选择恰好三位玩家</p>
+        <div class="player-list">
+          <div class="card player-item" data-player-id="p1"><span class="avatar" style="background:#e53935">张</span><strong>张三</strong><span class="check-icon">○</span></div>
+          <div class="card player-item" data-player-id="p2"><span class="avatar" style="background:#1e88e5">李</span><strong>李四</strong><span class="check-icon">○</span></div>
+          <div class="card player-item" data-player-id="p3"><span class="avatar" style="background:#43a047">王</span><strong>王五</strong><span class="check-icon">○</span></div>
+          <div class="card player-item" data-player-id="p4"><span class="avatar" style="background:#fb8c00">赵</span><strong>赵六</strong><span class="check-icon">○</span></div>
+          <div class="card player-item" data-player-id="p5"><span class="avatar" style="background:#8e24aa">孙</span><strong>孙七</strong><span class="check-icon">○</span></div>
+        </div>
+        <div id="selection-status" class="selection-status">已选择 0/3</div>
+        <button id="start-session" class="primary wide" disabled>开始（请选择 3 位玩家）</button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-history">
+      <header class="app-bar"><button class="back-btn go-home">← 返回</button><h1>历史场次</h1><span></span></header>
+      <div class="content"><div id="history-list"></div></div>
+    </section>
+
+    <section class="screen" id="screen-detail">
+      <header class="app-bar"><button class="back-btn go-history">← 返回</button><h1>场次详情</h1><span></span></header>
+      <div class="content" id="detail-content"></div>
+    </section>
+
+    <section class="screen" id="screen-settings">
+      <header class="app-bar"><button class="back-btn go-home">← 返回</button><h1>设置</h1><span></span></header>
+      <div class="content">
+        <p class="hint">修改玩家姓名。旧历史场次会保留当时的姓名。</p>
+        <div id="settings-list">
+          <label class="card setting-item"><span class="avatar" style="background:#e53935">张</span><input data-player-id="p1" value="张三" maxlength="12"></label>
+          <label class="card setting-item"><span class="avatar" style="background:#1e88e5">李</span><input data-player-id="p2" value="李四" maxlength="12"></label>
+          <label class="card setting-item"><span class="avatar" style="background:#43a047">王</span><input data-player-id="p3" value="王五" maxlength="12"></label>
+          <label class="card setting-item"><span class="avatar" style="background:#fb8c00">赵</span><input data-player-id="p4" value="赵六" maxlength="12"></label>
+          <label class="card setting-item"><span class="avatar" style="background:#8e24aa">孙</span><input data-player-id="p5" value="孙七" maxlength="12"></label>
+        </div>
+        <button id="save-settings" class="primary wide">保存设置</button>
+      </div>
+    </section>
+  </main>
 </div>
-
-<div class="phone">
-
-<!-- Screen 1: Home - Empty State -->
-<div class="screen active" id="screen-home-empty">
-  <div class="app-bar">
-    <h1>斗地主记分</h1>
-    <div class="actions">
-      <span title="历史">&#128197;</span>
-      <span title="设置">&#9881;</span>
-    </div>
-  </div>
-  <div class="empty">
-    <div class="title">开战</div>
-    <div class="sub">选择三位玩家开始记分</div>
-    <button class="start-btn">新建场次</button>
-  </div>
-</div>
-
-<!-- Screen 2: Home - In Session -->
-<div class="screen" id="screen-home-session">
-  <div class="app-bar">
-    <h1>斗地主记分</h1>
-    <div class="actions">
-      <span title="历史">&#128197;</span>
-      <span title="设置">&#9881;</span>
-    </div>
-  </div>
-  <div class="scroll">
-    <!-- Score cards -->
-    <div style="display:flex; gap:8px; padding:12px 12px 0;">
-      <div class="card score-card" style="flex:1;">
-        <div class="gold-line"></div>
-        <div class="avatar" style="background:#E53935;">张</div>
-        <div class="name">张三</div>
-        <div class="score positive">+15</div>
-      </div>
-      <div class="card score-card" style="flex:1;">
-        <div class="gold-line"></div>
-        <div class="avatar" style="background:#1E88E5;">李</div>
-        <div class="name">李四</div>
-        <div class="score negative">-8</div>
-      </div>
-      <div class="card score-card" style="flex:1;">
-        <div class="gold-line"></div>
-        <div class="avatar" style="background:#43A047;">王</div>
-        <div class="name">王五</div>
-        <div class="score negative">-7</div>
-      </div>
-    </div>
-
-    <!-- New session button -->
-    <button class="outlined-btn">新建场次</button>
-
-    <div class="gold-divider"></div>
-
-    <!-- Recent rounds -->
-    <div class="section-title">
-      <div class="bar"></div>
-      <div class="text">最近 3 局</div>
-    </div>
-
-    <!-- Round 3 -->
-    <div class="card round-tile">
-      <div class="row1">
-        <span class="tag tag-index">#3</span>
-        <span class="name">王五</span>
-        <span class="sub">地主</span>
-        <span class="tag tag-result-win">赢</span>
-        <span class="tag tag-badge">炸1</span>
-      </div>
-      <div class="row2">
-        <span class="score-text negative">张三 -4</span>
-        <span class="score-text negative">李四 -4</span>
-        <span class="score-text positive">王五 +8</span>
-      </div>
-    </div>
-
-    <!-- Round 2 -->
-    <div class="card round-tile">
-      <div class="row1">
-        <span class="tag tag-index">#2</span>
-        <span class="name">张三</span>
-        <span class="sub">地主</span>
-        <span class="tag tag-result-lose">输</span>
-        <span class="tag tag-badge">春天</span>
-      </div>
-      <div class="row2">
-        <span class="score-text negative">张三 -4</span>
-        <span class="score-text positive">李四 +2</span>
-        <span class="score-text positive">王五 +2</span>
-      </div>
-    </div>
-
-    <!-- Round 1 -->
-    <div class="card round-tile">
-      <div class="row1">
-        <span class="tag tag-index">#1</span>
-        <span class="name">李四</span>
-        <span class="sub">地主</span>
-        <span class="tag tag-result-win">赢</span>
-      </div>
-      <div class="row2">
-        <span class="score-text positive">李四 +2</span>
-        <span class="score-text negative">张三 -1</span>
-        <span class="score-text negative">王五 -1</span>
-      </div>
-    </div>
-
-    <div class="gold-divider" style="margin-top:8px;"></div>
-
-    <!-- Score input panel -->
-    <div class="card input-panel">
-      <div class="section-label">地主</div>
-      <div class="btn-row">
-        <div class="btn-option" onclick="selectLandlord(this)">张三</div>
-        <div class="btn-option selected" onclick="selectLandlord(this)">李四</div>
-        <div class="btn-option" onclick="selectLandlord(this)">王五</div>
-      </div>
-
-      <div class="section-gap"></div>
-      <div class="section-label">结果</div>
-      <div class="btn-row">
-        <div class="btn-option selected" style="background:linear-gradient(135deg,#E53935,#EF5350);border-color:#E53935;border-width:2px;">地主赢</div>
-        <div class="btn-option">地主输</div>
-      </div>
-
-      <div class="section-gap"></div>
-      <div class="section-label">加倍项</div>
-      <div class="btn-row">
-        <div class="btn-small">春天</div>
-        <div class="btn-small">蒙牌</div>
-      </div>
-
-      <div class="kick-row">
-        <span>踢：</span>
-        <div class="btn-small">张三</div>
-        <div class="btn-small selected">王五</div>
-        <div class="btn-small selected" style="margin-left:4px;">踢</div>
-        <div class="btn-small">踢+反踢</div>
-      </div>
-
-      <div class="bomb-row">
-        <span>炸弹：</span>
-        <div class="count-btn">-</div>
-        <div class="count-num">1</div>
-        <div class="count-btn">+</div>
-      </div>
-
-      <div class="preview-box">
-        <span class="label">本局 </span>
-        <span class="num">4</span>
-        <span class="label"> 分</span>
-      </div>
-
-      <button class="submit-btn">确认记分</button>
-    </div>
-  </div>
-</div>
-
-<!-- Screen 3: New Session -->
-<div class="screen" id="screen-new-session">
-  <div class="app-bar"><h1>新建场次</h1></div>
-  <div class="info">选择 3 位上场玩家（已选 <strong>2</strong>/3）</div>
-  <div class="scroll">
-    <div class="card player-item checked">
-      <div class="avatar-sm" style="background:#E53935;">张</div>
-      <div class="pname">张三</div>
-      <div class="check-icon">&#10003;</div>
-    </div>
-    <div class="card player-item checked">
-      <div class="avatar-sm" style="background:#1E88E5;">李</div>
-      <div class="pname">李四</div>
-      <div class="check-icon">&#10003;</div>
-    </div>
-    <div class="card player-item" onclick="this.classList.toggle('checked')">
-      <div class="avatar-sm" style="background:#43A047;">王</div>
-      <div class="pname">王五</div>
-      <div class="check-icon">&#9675;</div>
-    </div>
-    <div class="card player-item" onclick="this.classList.toggle('checked')">
-      <div class="avatar-sm" style="background:#FB8C00;">赵</div>
-      <div class="pname">赵六</div>
-      <div class="check-icon">&#9675;</div>
-    </div>
-    <div class="card player-item" onclick="this.classList.toggle('checked')">
-      <div class="avatar-sm" style="background:#8E24AA;">孙</div>
-      <div class="pname">孙七</div>
-      <div class="check-icon">&#9675;</div>
-    </div>
-  </div>
-  <div style="padding:16px;">
-    <button class="submit-btn" disabled>开始</button>
-  </div>
-</div>
-
-<!-- Screen 4: History -->
-<div class="screen" id="screen-history">
-  <div class="app-bar"><h1>历史场次</h1></div>
-  <div class="scroll" style="padding:12px;">
-    <div class="card history-item">
-      <div style="flex:1;">
-        <div class="date">2025-05-21 20:30</div>
-        <div class="players">张三  李四  王五</div>
-      </div>
-      <div class="arrow">&#8250;</div>
-    </div>
-    <div class="card history-item">
-      <div style="flex:1;">
-        <div class="date">2025-05-20 14:15</div>
-        <div class="players">张三  赵六  孙七</div>
-      </div>
-      <div class="arrow">&#8250;</div>
-    </div>
-    <div class="card history-item">
-      <div style="flex:1;">
-        <div class="date">2025-05-18 21:00</div>
-        <div class="players">李四  王五  赵六</div>
-      </div>
-      <div class="arrow">&#8250;</div>
-    </div>
-  </div>
-</div>
-
-<!-- Screen 5: Session Detail -->
-<div class="screen" id="screen-detail">
-  <div class="app-bar"><h1>场次详情</h1></div>
-  <div class="detail-header">
-    <div class="date">2025-05-21 20:30</div>
-    <div class="score-row">
-      <div class="player-col">
-        <div class="pname">张三</div>
-        <div class="big-score positive">+15</div>
-      </div>
-      <div class="player-col">
-        <div class="pname">李四</div>
-        <div class="big-score negative">-8</div>
-      </div>
-      <div class="player-col">
-        <div class="pname">王五</div>
-        <div class="big-score negative">-7</div>
-      </div>
-    </div>
-  </div>
-  <div class="scroll" style="padding:12px;">
-    <div class="card round-tile">
-      <div class="row1">
-        <span class="tag tag-index">#3</span>
-        <span class="name">王五</span>
-        <span class="sub">地主</span>
-        <span class="tag tag-result-win">赢</span>
-        <span class="tag tag-badge">炸1</span>
-      </div>
-      <div class="row2">
-        <span class="score-text negative">张三 -4</span>
-        <span class="score-text negative">李四 -4</span>
-        <span class="score-text positive">王五 +8</span>
-      </div>
-    </div>
-    <div class="card round-tile">
-      <div class="row1">
-        <span class="tag tag-index">#2</span>
-        <span class="name">张三</span>
-        <span class="sub">地主</span>
-        <span class="tag tag-result-lose">输</span>
-        <span class="tag tag-badge">春天</span>
-      </div>
-      <div class="row2">
-        <span class="score-text negative">张三 -4</span>
-        <span class="score-text positive">李四 +2</span>
-        <span class="score-text positive">王五 +2</span>
-      </div>
-    </div>
-    <div class="card round-tile">
-      <div class="row1">
-        <span class="tag tag-index">#1</span>
-        <span class="name">李四</span>
-        <span class="sub">地主</span>
-        <span class="tag tag-result-win">赢</span>
-      </div>
-      <div class="row2">
-        <span class="score-text positive">李四 +2</span>
-        <span class="score-text negative">张三 -1</span>
-        <span class="score-text negative">王五 -1</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Screen 6: Settings -->
-<div class="screen" id="screen-settings">
-  <div class="app-bar"><h1>设置</h1></div>
-  <div class="scroll">
-    <div class="card setting-item">
-      <div class="color-bar"></div>
-      <div class="avatar-sm" style="background:#E53935;">张</div>
-      <input type="text" value="张三">
-    </div>
-    <div class="card setting-item">
-      <div class="color-bar"></div>
-      <div class="avatar-sm" style="background:#1E88E5;">李</div>
-      <input type="text" value="李四">
-    </div>
-    <div class="card setting-item">
-      <div class="color-bar"></div>
-      <div class="avatar-sm" style="background:#43A047;">王</div>
-      <input type="text" value="王五">
-    </div>
-    <div class="card setting-item">
-      <div class="color-bar"></div>
-      <div class="avatar-sm" style="background:#FB8C00;">赵</div>
-      <input type="text" value="赵六">
-    </div>
-    <div class="card setting-item">
-      <div class="color-bar"></div>
-      <div class="avatar-sm" style="background:#8E24AA;">孙</div>
-      <input type="text" value="孙七">
-    </div>
-  </div>
-</div>
-
-</div>
-</div>
+<div id="toast" class="toast" role="status"></div>
 
 <script>
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-  document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-}
+(function () {
+  'use strict';
+  const STORAGE_KEY = 'doudizhu_state';
+  const SCHEMA_VERSION = 1;
+  let storageRecovered = false;
+  let selectedPlayerIds = [];
+  let selectedHistoryId = null;
 
-function selectLandlord(el) {
-  el.parentElement.querySelectorAll('.btn-option').forEach(b => {
-    b.classList.remove('selected');
-    b.style.background = '';
-    b.style.borderColor = '';
-  });
-  el.classList.add('selected');
-}
+  function clone(value) { return JSON.parse(JSON.stringify(value)); }
+  function makeId(prefix) { return prefix + '-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
+  function defaultDraft() {
+    return { landlordId: null, isLandlordWin: null, spring: false, blind: false, kickStates: {}, bombCount: 0 };
+  }
+  function defaultState() {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      players: [
+        { id: 'p1', name: '张三', color: '#e53935' },
+        { id: 'p2', name: '李四', color: '#1e88e5' },
+        { id: 'p3', name: '王五', color: '#43a047' },
+        { id: 'p4', name: '赵六', color: '#fb8c00' },
+        { id: 'p5', name: '孙七', color: '#8e24aa' }
+      ],
+      activeSession: null,
+      history: [],
+      draftRound: defaultDraft()
+    };
+  }
+  function isValidState(value) {
+    return value && value.schemaVersion === SCHEMA_VERSION && Array.isArray(value.players) &&
+      value.players.length === 5 && Array.isArray(value.history) && 'activeSession' in value &&
+      value.draftRound && typeof value.draftRound === 'object';
+  }
+  function saveState(storage, value) { storage.setItem(STORAGE_KEY, JSON.stringify(value)); }
+  function loadState(storage) {
+    const raw = storage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    try {
+      const parsed = JSON.parse(raw);
+      if (!isValidState(parsed)) throw new Error('schema');
+      return parsed;
+    } catch (_) {
+      storageRecovered = true;
+      return defaultState();
+    }
+  }
+  function calcBaseScore(n) { return n <= 5 ? 10 * (1 << n) : 320 + (n - 5) * 100; }
+  function calcRoundScores(options) {
+    const nBase = (options.spring ? 1 : 0) + (options.blind ? 1 : 0) + Number(options.bombCount || 0);
+    const base = calcBaseScore(nBase);
+    const farmerAKickCount = Number(options.farmerAKickCount != null ? options.farmerAKickCount : (options.kickCount || 0));
+    const farmerBKickCount = Number(options.farmerBKickCount || 0);
+    const farmerAScoreBase = farmerAKickCount > 0 ? calcBaseScore(nBase + farmerAKickCount) : base;
+    const farmerBScoreBase = farmerBKickCount > 0 ? calcBaseScore(nBase + farmerBKickCount) : base;
+    let farmerAScore = -Math.trunc(farmerAScoreBase / 2);
+    let farmerBScore = -Math.trunc(farmerBScoreBase / 2);
+    let landlordScore = -(farmerAScore + farmerBScore);
+    if (!options.isLandlordWin) {
+      landlordScore = -landlordScore; farmerAScore = -farmerAScore; farmerBScore = -farmerBScore;
+    }
+    return { landlordScore, farmerAScore, farmerBScore };
+  }
+  function createSession(current, playerIds) {
+    const ids = Array.from(new Set(playerIds || []));
+    if (ids.length !== 3 || ids.some(id => !current.players.some(p => p.id === id))) throw new Error('必须选择恰好 3 位玩家');
+    const next = clone(current);
+    const totals = {}; ids.forEach(id => { totals[id] = 0; });
+    next.activeSession = { id: makeId('session'), playerIds: ids, totals, rounds: [], startedAt: new Date().toISOString() };
+    next.draftRound = defaultDraft();
+    return next;
+  }
+  function confirmRound(current, draft) {
+    if (!current.activeSession) throw new Error('当前没有场次');
+    if (!draft.landlordId || typeof draft.isLandlordWin !== 'boolean') throw new Error('请选择地主和胜负');
+    if (!current.activeSession.playerIds.includes(draft.landlordId)) throw new Error('地主不在当前场次');
+    const next = clone(current);
+    const farmers = next.activeSession.playerIds.filter(id => id !== draft.landlordId);
+    const farmerA = farmers[0], farmerB = farmers[1];
+    const kickStates = {};
+    farmers.forEach(id => {
+      const legacyValue = draft.kickFarmer === id ? Number(draft.kickCount || 0) : 0;
+      kickStates[id] = Math.max(0, Math.min(2, Number((draft.kickStates || {})[id] != null ? draft.kickStates[id] : legacyValue)));
+    });
+    const result = calcRoundScores({
+      ...draft,
+      farmerAKickCount: kickStates[farmerA],
+      farmerBKickCount: kickStates[farmerB]
+    });
+    const scores = {};
+    scores[draft.landlordId] = result.landlordScore;
+    scores[farmerA] = result.farmerAScore;
+    scores[farmerB] = result.farmerBScore;
+    next.activeSession.playerIds.forEach(id => { next.activeSession.totals[id] += scores[id]; });
+    next.activeSession.rounds.push({
+      id: makeId('round'), index: next.activeSession.rounds.length + 1, createdAt: new Date().toISOString(),
+      landlordId: draft.landlordId, isLandlordWin: draft.isLandlordWin, spring: !!draft.spring,
+      blind: !!draft.blind, kickStates,
+      bombCount: Number(draft.bombCount || 0), scores
+    });
+    next.draftRound = defaultDraft();
+    return next;
+  }
+  function undoLastRound(current) {
+    if (!current.activeSession || !current.activeSession.rounds.length) throw new Error('没有可撤回的记分记录');
+    const next = clone(current);
+    const round = next.activeSession.rounds.pop();
+    next.activeSession.playerIds.forEach(id => {
+      next.activeSession.totals[id] -= Number(round.scores[id] || 0);
+    });
+    next.draftRound = {
+      landlordId: round.landlordId,
+      isLandlordWin: round.isLandlordWin,
+      spring: false,
+      blind: false,
+      kickStates: clone(round.kickStates || {}),
+      bombCount: Number(round.bombCount || 0)
+    };
+    return next;
+  }
+  function endSession(current) {
+    if (!current.activeSession) throw new Error('当前没有场次');
+    const next = clone(current);
+    const session = clone(next.activeSession);
+    session.endedAt = new Date().toISOString();
+    session.players = session.playerIds.map(id => clone(next.players.find(p => p.id === id)));
+    next.history.unshift(session);
+    next.activeSession = null;
+    next.draftRound = defaultDraft();
+    return next;
+  }
 
-// Toggle player items in new-session screen
-document.querySelectorAll('.player-item').forEach(item => {
-  item.addEventListener('click', () => {
-    item.classList.toggle('checked');
-    const icon = item.querySelector('.check-icon');
-    icon.innerHTML = item.classList.contains('checked') ? '&#10003;' : '&#9675;';
+  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession };
+  let appState = loadState(localStorage);
+
+  function byId(id) { return document.getElementById(id); }
+  function playerById(id) { return appState.players.find(p => p.id === id); }
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+  }
+  function showToast(message) {
+    const el = byId('toast'); if (!el) return;
+    el.textContent = message; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1800);
+  }
+  function syncTabs(id) {
+    document.querySelectorAll('.tab-bar button').forEach(button => button.classList.toggle('active', button.getAttribute('data-screen') === id));
+  }
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+    const target = byId('screen-' + id); if (target) target.classList.add('active');
+    syncTabs(id);
+    renderScreen(id);
+  }
+  function goHome() { showScreen(appState.activeSession ? 'home-session' : 'home-empty'); }
+  function persist() { saveState(localStorage, appState); }
+  function ask(message) { return typeof confirm === 'function' ? confirm(message) : true; }
+  function formatTime(value) {
+    try { return new Date(value).toLocaleString('zh-CN', { hour12: false }); } catch (_) { return value || ''; }
+  }
+  function renderScreen(id) {
+    if (id === 'home-session') renderHomeSession();
+    if (id === 'new-session') renderNewSession();
+    if (id === 'history') renderHistory();
+    if (id === 'detail') renderDetail();
+    if (id === 'settings') renderSettings();
+  }
+  function renderNewSession() {
+    document.querySelectorAll('#screen-new-session .player-item').forEach(item => {
+      const player = playerById(item.getAttribute('data-player-id'));
+      const checked = selectedPlayerIds.includes(player.id);
+      const strong = item.querySelector('strong'); if (strong) strong.textContent = player.name;
+      const avatar = item.querySelector('.avatar'); if (avatar) { avatar.textContent = player.name.slice(0,1); avatar.style.background = player.color; }
+      const icon = item.querySelector('.check-icon'); if (icon) icon.textContent = checked ? '✓' : '○';
+      item.classList.toggle('checked', checked);
+    });
+    const count = selectedPlayerIds.length;
+    const status = byId('selection-status'); if (status) status.textContent = count === 3 ? '已选择 3/3，可以开始' : '已选择 ' + count + '/3';
+    const start = byId('start-session');
+    if (start) { start.disabled = count !== 3; start.textContent = count === 3 ? '开始场次' : '开始（请选择 3 位玩家）'; }
+  }
+  function renderHomeSession() {
+    const session = appState.activeSession;
+    const empty = byId('session-empty-note'), workspace = byId('session-workspace');
+    if (!session) {
+      if (empty) empty.style.display = 'block';
+      if (workspace) workspace.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    if (workspace) workspace.style.display = 'block';
+    byId('score-grid').innerHTML = session.playerIds.map(id => {
+      const p = playerById(id); const score = session.totals[id] || 0;
+      const polarity = score > 0 ? 'positive' : (score < 0 ? 'negative' : 'zero');
+      return '<div class="card score-card" style="--player-color:'+p.color+'"><strong class="player-name">'+escapeHtml(p.name)+'</strong><div class="score '+polarity+'">'+(score > 0 ? '+' : '')+score+'</div></div>';
+    }).join('');
+    const recent = session.rounds.slice(-3).reverse();
+    byId('undo-last-round').disabled = session.rounds.length === 0;
+    byId('recent-rounds').innerHTML = recent.length ? recent.map(round =>
+      '<div class="card round-row"><span>第 '+round.index+' 局 · '+escapeHtml(playerById(round.landlordId).name)+'地主</span><strong>'+(round.isLandlordWin?'胜':'负')+'</strong></div>'
+    ).join('') : '<div class="card empty-card">还没有记分记录</div>';
+    renderDraft();
+  }
+  function renderDraft() {
+    const session = appState.activeSession; if (!session) return;
+    const draft = appState.draftRound;
+    const hadLegacyBoost = !!draft.spring || !!draft.blind;
+    draft.spring = false;
+    draft.blind = false;
+    if (!draft.kickStates || typeof draft.kickStates !== 'object') {
+      draft.kickStates = {};
+      if (draft.kickFarmer && draft.kickCount) draft.kickStates[draft.kickFarmer] = Number(draft.kickCount);
+    }
+    const landlords = byId('landlord-options');
+    landlords.innerHTML = '';
+    session.playerIds.forEach(id => {
+      const p = playerById(id), button = document.createElement('button');
+      button.setAttribute('class', 'btn-option landlord-option' + (draft.landlordId === id ? ' selected' : ''));
+      button.setAttribute('style', '--player-color:' + p.color);
+      const dot = document.createElement('span');
+      dot.setAttribute('class', 'player-dot');
+      const label = document.createElement('span');
+      label.setAttribute('class', 'player-label');
+      label.textContent = p.name;
+      button.appendChild(dot);
+      button.appendChild(label);
+      button.addEventListener('click', () => {
+        draft.landlordId = id;
+        delete draft.kickStates[id];
+        persist(); renderDraft();
+      });
+      landlords.appendChild(button);
+    });
+    byId('landlord-win').classList.toggle('selected', draft.isLandlordWin === true);
+    byId('landlord-loss').classList.toggle('selected', draft.isLandlordWin === false);
+    byId('bomb-count').textContent = String(draft.bombCount);
+    byId('bomb-minus').disabled = draft.bombCount <= 0;
+    const kicks = byId('kick-options'); kicks.innerHTML = '';
+    if (draft.landlordId) {
+      session.playerIds.filter(id => id !== draft.landlordId).forEach(id => {
+        const p = playerById(id), button = document.createElement('button');
+        const currentState = Math.max(0, Math.min(2, Number(draft.kickStates[id] || 0)));
+        const active = currentState > 0;
+        const stateLabel = ['不踢', '踢', '反踢'][currentState];
+        button.setAttribute('class', 'btn-option' + (active ? ' selected' : ''));
+        button.textContent = p.name + '：' + stateLabel;
+        button.addEventListener('click', () => {
+          draft.kickStates[id] = (currentState + 1) % 3;
+          persist(); renderDraft();
+        });
+        kicks.appendChild(button);
+      });
+    } else {
+      kicks.textContent = '请先选择地主';
+    }
+    const ready = !!draft.landlordId && typeof draft.isLandlordWin === 'boolean';
+    byId('confirm-round').disabled = !ready;
+    if (ready) {
+      const farmers = session.playerIds.filter(id => id !== draft.landlordId);
+      const r = calcRoundScores({
+        ...draft,
+        farmerAKickCount: Number(draft.kickStates[farmers[0]] || 0),
+        farmerBKickCount: Number(draft.kickStates[farmers[1]] || 0)
+      });
+      byId('round-preview').textContent = '预览：地主 ' + (r.landlordScore > 0 ? '+' : '') + r.landlordScore + '，农民 ' + r.farmerAScore + ' / ' + r.farmerBScore;
+    } else byId('round-preview').textContent = '请选择地主和胜负';
+    if (hadLegacyBoost) persist();
+  }
+  function renderHistory() {
+    const list = byId('history-list');
+    if (!appState.history.length) { list.innerHTML = '<div class="card empty-card">暂无历史场次</div>'; return; }
+    list.innerHTML = '';
+    appState.history.forEach(session => {
+      const button = document.createElement('button');
+      button.className = 'card history-item';
+      button.innerHTML = '<div><strong>'+escapeHtml(session.players.map(p=>p.name).join('、'))+'</strong><span>'+escapeHtml(formatTime(session.endedAt || session.startedAt))+' · '+session.rounds.length+' 局</span></div><b>›</b>';
+      button.addEventListener('click', () => { selectedHistoryId = session.id; showScreen('detail'); });
+      list.appendChild(button);
+    });
+  }
+  function renderDetail() {
+    let session = appState.history.find(item => item.id === selectedHistoryId);
+    if (!session) session = appState.history[0] || appState.activeSession;
+    const root = byId('detail-content');
+    if (!session) { root.innerHTML = '<div class="card empty-card">暂无场次详情</div>'; return; }
+    const snapshots = session.players || session.playerIds.map(id => playerById(id));
+    root.innerHTML =
+      '<div class="card"><div class="muted">'+escapeHtml(formatTime(session.startedAt))+'</div><div class="score-grid">'+
+      snapshots.map(p => '<div class="score-card"><strong>'+escapeHtml(p.name)+'</strong><div class="score">'+(session.totals[p.id]||0)+'</div></div>').join('')+
+      '</div></div><h2 class="section-title">全部记录</h2>'+
+      (session.rounds.length ? session.rounds.slice().reverse().map(round => '<div class="card round-row"><span>第 '+round.index+' 局 · '+escapeHtml((snapshots.find(p=>p.id===round.landlordId)||{name:'?'}).name)+'地主</span><strong>'+(round.isLandlordWin?'胜':'负')+'</strong></div>').join('') : '<div class="card empty-card">没有局记录</div>');
+  }
+  function renderSettings() {
+    document.querySelectorAll('#settings-list input').forEach(input => {
+      const p = playerById(input.getAttribute('data-player-id')); if (p) input.value = p.name;
+    });
+  }
+
+  document.querySelectorAll('.tab-bar button').forEach(button => button.addEventListener('click', () => showScreen(button.getAttribute('data-screen'))));
+  document.querySelectorAll('.start-btn').forEach(button => button.addEventListener('click', () => { selectedPlayerIds = []; showScreen('new-session'); }));
+  document.querySelectorAll('.internal-history').forEach(button => button.addEventListener('click', () => showScreen('history')));
+  document.querySelectorAll('.internal-settings').forEach(button => button.addEventListener('click', () => showScreen('settings')));
+  document.querySelectorAll('.go-home').forEach(button => button.addEventListener('click', goHome));
+  document.querySelectorAll('.go-history').forEach(button => button.addEventListener('click', () => showScreen('history')));
+  document.querySelectorAll('#screen-new-session .player-item').forEach(item => item.addEventListener('click', () => {
+    const id = item.getAttribute('data-player-id'), index = selectedPlayerIds.indexOf(id);
+    if (index >= 0) selectedPlayerIds.splice(index, 1);
+    else if (selectedPlayerIds.length < 3) selectedPlayerIds.push(id);
+    else showToast('最多只能选择三位玩家');
+    renderNewSession();
+  }));
+  byId('start-session').addEventListener('click', () => {
+    if (selectedPlayerIds.length !== 3) { byId('selection-status').textContent = '必须选择恰好三位玩家'; return; }
+    if (appState.activeSession && !ask('当前场次尚未结束，确定覆盖并新建吗？')) return;
+    appState = createSession(appState, selectedPlayerIds); persist(); showScreen('home-session'); showToast('场次已开始');
   });
-});
+  byId('new-session-during').addEventListener('click', () => {
+    if (appState.activeSession && !ask('当前场次尚未结束，确定新建并覆盖吗？')) return;
+    selectedPlayerIds = []; showScreen('new-session');
+  });
+  byId('end-session').addEventListener('click', () => {
+    if (!appState.activeSession || !ask('确定结束当前场次吗？结束后可在历史中查看。')) return;
+    appState = endSession(appState); persist(); showScreen('history'); showToast('场次已结束');
+  });
+  byId('undo-last-round').addEventListener('click', () => {
+    if (!appState.activeSession || !appState.activeSession.rounds.length) return;
+    if (!ask('确定撤回上一局吗？累计分会回滚，并恢复该局的记分选项。')) return;
+    appState = undoLastRound(appState);
+    persist();
+    renderHomeSession();
+    byId('round-feedback').textContent = '上一局已撤回，可修改后重新记分';
+    showToast('已撤回上一局');
+  });
+  byId('landlord-win').addEventListener('click', () => { appState.draftRound.isLandlordWin = true; persist(); renderDraft(); });
+  byId('landlord-loss').addEventListener('click', () => { appState.draftRound.isLandlordWin = false; persist(); renderDraft(); });
+  byId('bomb-minus').addEventListener('click', () => { appState.draftRound.bombCount = Math.max(0, appState.draftRound.bombCount - 1); persist(); renderDraft(); });
+  byId('bomb-plus').addEventListener('click', () => { appState.draftRound.bombCount += 1; persist(); renderDraft(); });
+  byId('confirm-round').addEventListener('click', () => {
+    try { appState = confirmRound(appState, appState.draftRound); persist(); renderHomeSession(); byId('round-feedback').textContent = '记分成功'; showToast('本局已记分'); }
+    catch (error) { byId('round-feedback').textContent = error.message; }
+  });
+  byId('save-settings').addEventListener('click', () => {
+    let valid = true;
+    document.querySelectorAll('#settings-list input').forEach(input => {
+      const name = input.value.trim(); if (!name) { valid = false; return; }
+      const p = playerById(input.getAttribute('data-player-id')); if (p) p.name = name;
+    });
+    if (!valid) { showToast('玩家姓名不能为空'); return; }
+    persist(); renderSettings(); showToast('设置已保存');
+  });
+
+  renderNewSession();
+  if (appState.activeSession) showScreen('home-session'); else showScreen('home-empty');
+  if (storageRecovered) { persist(); showToast('检测到损坏数据，已安全恢复默认状态'); }
+})();
 </script>
-
 </body>
 </html>
