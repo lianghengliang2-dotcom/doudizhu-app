@@ -25,6 +25,7 @@ ehthumbs.db
 *.bak
 .buildlog/
 .worktrees/
+.superpowers/
 
 # ===== Flutter / Dart =====
 # （doudizhu_app/ 内已有更具体的 .gitignore，此处为顶层兜底）
