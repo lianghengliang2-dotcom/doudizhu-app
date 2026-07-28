@@ -471,6 +471,7 @@ Append this fake helper and the focused tests to the existing interaction suite:
 ```js
 function createPwaFakes(options = {}) {
   const windowHandlers = new Map();
+  const documentHandlers = new Map();
   const workerHandlers = new Map();
   const registrationHandlers = new Map();
   const installingHandlers = new Map();
@@ -504,11 +505,16 @@ function createPwaFakes(options = {}) {
     location: { reload: () => { reloadCalls += 1; } },
     addEventListener: (type, handler) => windowHandlers.set(type, handler),
   };
+  const documentObj = {
+    visibilityState: options.visibilityState || 'visible',
+    addEventListener: (type, handler) => documentHandlers.set(type, handler),
+  };
   return {
     deps: {
       navigatorObj: { serviceWorker },
       windowObj,
       locationObj: { protocol: 'https:', hostname: 'example.test' },
+      documentObj,
       banner,
       updateButton,
     },
@@ -518,6 +524,8 @@ function createPwaFakes(options = {}) {
     get updateCalls() { return updateCalls; },
     get reloadCalls() { return reloadCalls; },
     async fireWindow(type) { await windowHandlers.get(type)?.(); },
+    async fireDocument(type) { await documentHandlers.get(type)?.(); },
+    setVisibility(state) { documentObj.visibilityState = state; },
     async fireServiceWorker(type) { await workerHandlers.get(type)?.(); },
     async clickUpdate() { await buttonHandlers.get('click')?.(); },
   };
@@ -546,6 +554,9 @@ test('setup registers relative scope and checks on load, online, and return to f
   assert.deepEqual(fakes.registerCalls, [['./sw.js', { scope: './' }]]);
   assert.equal(fakes.updateCalls, 1);
   await fakes.fireWindow('online');
+  assert.equal(fakes.updateCalls, 2);
+  fakes.setVisibility('hidden');
+  await fakes.fireDocument('visibilitychange');
   assert.equal(fakes.updateCalls, 2);
   fakes.setVisibility('visible');
   await fakes.fireDocument('visibilitychange');
@@ -649,9 +660,11 @@ async function setupPwaUpdates(deps) {
     const check = () => registration.update().catch(() => {});
     check();
     windowObj.addEventListener('online', check);
-    documentObj.addEventListener('visibilitychange', () => {
-      if (documentObj.visibilityState === 'visible') check();
-    });
+    if (documentObj && typeof documentObj.addEventListener === 'function') {
+      documentObj.addEventListener('visibilitychange', () => {
+        if (documentObj.visibilityState === 'visible') check();
+      });
+    }
     return registration;
   } catch (_) {
     return null;
