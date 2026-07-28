@@ -640,3 +640,101 @@ test('script executes without throwing on load', () => {
   const { scriptError } = loadPreview();
   assert.equal(scriptError, undefined, 'preview.html inline script must not throw on load');
 });
+
+function createPwaFakes(options = {}) {
+  const windowHandlers = new Map();
+  const workerHandlers = new Map();
+  const registrationHandlers = new Map();
+  const installingHandlers = new Map();
+  const buttonHandlers = new Map();
+  const messages = [];
+  const registerCalls = [];
+  let updateCalls = 0;
+  let reloadCalls = 0;
+  const waiting = options.waiting ? { postMessage: message => messages.push(message) } : null;
+  const registration = {
+    waiting,
+    installing: options.installing ? {
+      state: 'installing',
+      addEventListener: (type, handler) => installingHandlers.set(type, handler),
+    } : null,
+    update: async () => { updateCalls += 1; },
+    addEventListener: (type, handler) => registrationHandlers.set(type, handler),
+  };
+  const serviceWorker = {
+    controller: {},
+    register: async (...args) => {
+      registerCalls.push(args);
+      if (options.registrationError) throw options.registrationError;
+      return registration;
+    },
+    addEventListener: (type, handler) => workerHandlers.set(type, handler),
+  };
+  const banner = { hidden: true };
+  const updateButton = { addEventListener: (type, handler) => buttonHandlers.set(type, handler) };
+  const windowObj = {
+    location: { reload: () => { reloadCalls += 1; } },
+    addEventListener: (type, handler) => windowHandlers.set(type, handler),
+  };
+  return {
+    deps: {
+      navigatorObj: { serviceWorker },
+      windowObj,
+      locationObj: { protocol: 'https:', hostname: 'example.test' },
+      banner,
+      updateButton,
+    },
+    banner,
+    messages,
+    registerCalls,
+    get updateCalls() { return updateCalls; },
+    get reloadCalls() { return reloadCalls; },
+    async fireWindow(type) { await windowHandlers.get(type)?.(); },
+    async fireServiceWorker(type) { await workerHandlers.get(type)?.(); },
+    async clickUpdate() { await buttonHandlers.get('click')?.(); },
+  };
+}
+
+test('page links the relative manifest, theme color, favicon, and apple touch icon', () => {
+  const html = readPreview();
+  assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
+  assert.match(html, /name="theme-color" content="#151515"/);
+  assert.match(html, /rel="icon" href="\.\/icons\/icon-192\.png"/);
+  assert.match(html, /rel="apple-touch-icon" href="\.\/icons\/icon-192\.png"/);
+});
+
+test('service worker eligibility accepts HTTPS and local development only', () => {
+  const app = loadPreview().window.previewApp;
+  assert.equal(app.canUseServiceWorker({ protocol: 'https:', hostname: 'example.test' }, { serviceWorker: {} }), true);
+  assert.equal(app.canUseServiceWorker({ protocol: 'http:', hostname: 'localhost' }, { serviceWorker: {} }), true);
+  assert.equal(app.canUseServiceWorker({ protocol: 'http:', hostname: '127.0.0.1' }, { serviceWorker: {} }), true);
+  assert.equal(app.canUseServiceWorker({ protocol: 'http:', hostname: 'example.test' }, { serviceWorker: {} }), false);
+  assert.equal(app.canUseServiceWorker({ protocol: 'file:', hostname: '' }, { serviceWorker: {} }), false);
+});
+
+test('setup registers relative scope and checks on load and online', async () => {
+  const fakes = createPwaFakes();
+  await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
+  assert.deepEqual(JSON.parse(JSON.stringify(fakes.registerCalls)), [['./sw.js', { scope: './' }]]);
+  assert.equal(fakes.updateCalls, 1);
+  await fakes.fireWindow('online');
+  assert.equal(fakes.updateCalls, 2);
+});
+
+test('waiting worker is shown and update button sends SKIP_WAITING', async () => {
+  const fakes = createPwaFakes({ waiting: true });
+  await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
+  assert.equal(fakes.banner.hidden, false);
+  await fakes.clickUpdate();
+  assert.deepEqual(JSON.parse(JSON.stringify(fakes.messages)), [{ type: 'SKIP_WAITING' }]);
+});
+
+test('controllerchange reloads once and registration failure degrades safely', async () => {
+  const fakes = createPwaFakes();
+  await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
+  await fakes.fireServiceWorker('controllerchange');
+  await fakes.fireServiceWorker('controllerchange');
+  assert.equal(fakes.reloadCalls, 1);
+  const failed = createPwaFakes({ registrationError: new Error('offline') });
+  assert.equal(await loadPreview().window.previewApp.setupPwaUpdates(failed.deps), null);
+});

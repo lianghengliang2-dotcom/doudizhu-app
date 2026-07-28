@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#151515">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <title>斗地主记分 - 交互预览</title>
   <style>
     :root {
@@ -78,6 +84,8 @@
     .history-item span { color: var(--muted); font-size: 13px; }
     .setting-item { display: grid; grid-template-columns: 38px 1fr; gap: 11px; align-items: center; margin-bottom: 9px; }
     .setting-item input { width: 100%; background: #0f0d0b; border: 1px solid #4a3a2b; border-radius: 9px; padding: 10px; color: var(--text); }
+    .update-notice { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 406px); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px 11px 15px; transform: translateX(-50%); background: #21170f; border: 1px solid var(--gold-soft); border-radius: 12px; box-shadow: 0 12px 30px #0009; color: var(--text); font-size: 14px; z-index: 30; }
+    .update-notice button { flex: 0 0 auto; border: 1px solid #ef4438; border-radius: 8px; padding: 7px 10px; background: var(--red); color: #fff; font-weight: 800; }
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: #f5e6c8; color: #2a1d11; border-radius: 10px; padding: 10px 16px; font-weight: 700; transition: .2s; z-index: 20; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     @media (max-width: 480px) { .preview-shell { padding: 8px 0 24px; } .phone { border-radius: 0; border-left: 0; border-right: 0; } }
@@ -196,6 +204,10 @@
       </div>
     </section>
   </main>
+</div>
+<div id="pwa-update" class="update-notice" role="status" hidden>
+  <span>发现新版本，可以立即更新。</span>
+  <button id="pwa-update-now" type="button">立即更新</button>
 </div>
 <div id="toast" class="toast" role="status"></div>
 
@@ -331,7 +343,47 @@
     return next;
   }
 
-  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession };
+  function canUseServiceWorker(locationObj, navigatorObj) {
+    if (!navigatorObj || !('serviceWorker' in navigatorObj)) return false;
+    return locationObj.protocol === 'https:' ||
+      (locationObj.protocol === 'http:' && (locationObj.hostname === 'localhost' || locationObj.hostname === '127.0.0.1'));
+  }
+  async function setupPwaUpdates(deps) {
+    const { navigatorObj, windowObj, locationObj, banner, updateButton } = deps;
+    if (!canUseServiceWorker(locationObj, navigatorObj)) return null;
+    try {
+      const registration = await navigatorObj.serviceWorker.register('./sw.js', { scope: './' });
+      let refreshing = false;
+      const showWaiting = () => {
+        if (!registration.waiting || !banner) return;
+        banner.hidden = false;
+      };
+      showWaiting();
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener('statechange', () => {
+          if (installing.state === 'installed' && navigatorObj.serviceWorker.controller) showWaiting();
+        });
+      });
+      if (updateButton) updateButton.addEventListener('click', () => {
+        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      });
+      navigatorObj.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        windowObj.location.reload();
+      });
+      const check = () => registration.update().catch(() => {});
+      check();
+      windowObj.addEventListener('online', check);
+      return registration;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession, canUseServiceWorker, setupPwaUpdates };
   let appState = loadState(localStorage);
 
   function byId(id) { return document.getElementById(id); }
@@ -553,6 +605,15 @@
   renderNewSession();
   if (appState.activeSession) showScreen('home-session'); else showScreen('home-empty');
   if (storageRecovered) { persist(); showToast('检测到损坏数据，已安全恢复默认状态'); }
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('load', () => setupPwaUpdates({
+      navigatorObj: window.navigator,
+      windowObj: window,
+      locationObj: window.location,
+      banner: byId('pwa-update'),
+      updateButton: byId('pwa-update-now'),
+    }));
+  }
 })();
 </script>
 </body>
