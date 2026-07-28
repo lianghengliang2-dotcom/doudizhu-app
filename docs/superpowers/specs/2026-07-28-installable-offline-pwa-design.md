@@ -139,14 +139,14 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
 
 目标：恢复联网后自动获取新版，但不打断用户当前对局。
 
-1. 页面 `load` 注册 SW 成功后立即调用 `registration.update()` 检查新版；浏览器恢复联网（`online` 事件）时再次调用 `registration.update()`。这两处触发实现「联网后自动获取新版」，`update()` 内部失败被静默吞掉，不影响页面。
+1. 页面 `load` 注册 SW 成功后立即调用 `registration.update()` 检查新版；浏览器恢复联网（`online` 事件）以及页面从后台恢复可见（`visibilitychange` 且 `document.visibilityState === "visible"`）时再次调用 `registration.update()`。这些触发实现「联网后自动获取新版」，`update()` 内部失败被静默吞掉，不影响页面。
 2. 页面监听 `registration` 的 `updatefound` 与 `navigator.serviceWorker` 的 `controllerchange`。
 3. 当检测到存在新的等待中 SW（`registration.waiting` 非空），在页面顶部或底部显示一条非阻塞提示（例如「发现新版本」），并提供一个「立即更新」按钮。
 4. 用户点击「立即更新」时，向等待中的 SW 发送 `SKIP_WAITING` 消息，SW 在 `message` 中调用 `self.skipWaiting()`；待 `controllerchange` 触发后页面调用 `location.reload()` 加载新版。
 5. 用户不点击时，当前版本继续运行；当所有受控页面关闭后，浏览器自然激活等待中的新 SW，下次完全冷启动即加载新版。
-6. 不引入轮询；除上述 `load` 与 `online` 触发的 `registration.update()` 外，更新检查频率依赖浏览器自身的 SW 更新检查（页面打开、导航等时机）。
+6. 不引入轮询；除上述 `load`、`online` 与页面恢复可见触发的 `registration.update()` 外，更新检查频率依赖浏览器自身的 SW 更新检查（页面打开、导航等时机）。
 
-版本管理：缓存名带版本号，例如 `doudizhu-shell-v1`；每次发布新版时，实施计划中由构建/手动步骤递增版本号字符串，并更新 `sw.js` 预缓存清单中的外壳资源，`activate` 阶段据此淘汰旧缓存。
+版本管理：缓存前缀包含规范化并编码的 Service Worker scope 路径，使用不会与编码 scope 混淆的 `::` 边界，缓存名再带版本号，例如 `doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1`。每次发布新版时递增版本后缀并更新预缓存清单；`activate` 阶段只淘汰当前 scope 命名空间内的旧版本，不触碰同源其他子目录部署的缓存。
 
 ## 数据流
 
@@ -154,7 +154,7 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
 
 1. 浏览器请求 `preview.html`，加载页面并注册 Service Worker。
 2. 新 SW `install` 预缓存应用外壳与图标；首次安装无旧 worker，安装后自然激活并 `clients.claim()`。页面渲染后从 `localStorage` 读取 `doudizhu_state`，缺失则使用 `defaultState()`。
-3. 注册成功后页面调用一次 `registration.update()`（首次通常无新版），随后在 `online` 时再次检查。
+3. 注册成功后页面调用一次 `registration.update()`（首次通常无新版），随后在 `online` 或页面恢复可见时再次检查。
 4. 用户记分操作照常通过既有 `persist()` 写入 `localStorage`，与 PWA 改造无关。
 
 ### 离线启动（已安装/已缓存）
@@ -167,7 +167,7 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
 
 ### 在线更新
 
-见上「更新行为」：页面在 `load` 与恢复 `online` 时调用 `registration.update()` 自动发现新版；新版 SW 安装后保持 `waiting`，通过非阻塞提示 + 用户点击 `SKIP_WAITING` 或关闭所有页面自然激活，随后刷新加载新版。活动 SW 不在后台改写已缓存外壳。
+见上「更新行为」：页面在 `load`、恢复 `online` 与页面恢复可见时调用 `registration.update()` 自动发现新版；新版 SW 安装后保持 `waiting`，通过非阻塞提示 + 用户点击 `SKIP_WAITING` 或关闭所有页面自然激活，随后刷新加载新版。活动 SW 不在后台改写已缓存外壳。
 
 ### localStorage 持久化
 
@@ -179,11 +179,11 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
 
 - **`file://` 直开**：Service Worker 无法在 `file:` 协议注册。注册代码先判断协议/主机，仅在 `https:`、`localhost`、`127.0.0.1` 下注册；其余情况（含双击打开 `preview.html`）跳过注册，应用照常以「纯 localStorage + 无离线外壳」方式运行。即：PWA 离线能力需要一次在线安装（经 GitHub Pages 或本地静态服务器），与用户已确认的需求一致。
 - **SW 注册失败**：`register().catch()` 静默吞错，页面主功能不受影响。
-- **`registration.update()` 失败**：在 `load` 与 `online` 触发处用 `.catch()` 静默吞错；检查不到新版不影响当前版本运行。
-- **预缓存失败**：逐个资源 `cache.add`，单个失败不中断整体安装；缺失资源在后续 `fetch` 阶段按「网络优先回退缓存」补取。
+- **`registration.update()` 失败**：在 `load`、`online` 与页面恢复可见触发处用 `.catch()` 静默吞错；检查不到新版不影响当前版本运行。
+- **预缓存失败**：全部必需外壳资源通过一次 `cache.addAll(shellUrls())` 原子预缓存；任一资源失败会让 `install` 失败，保留仍可离线工作的旧 worker 与旧缓存，绝不激活不完整的新版本。
 - **图标缺失**：清单仍可加载，仅影响可安装性判定与桌面图标外观；页面内功能不受影响。实施任务必须确保四个图标文件真实存在。
 - **数据损坏**：沿用既有 `loadState` 回退逻辑，回到默认状态并提示「检测到损坏数据，已安全恢复默认状态」，不让页面白屏。
-- **缓存清理**：`activate` 只删除不在白名单中的旧版本缓存，绝不触碰 `localStorage`。
+- **缓存清理**：`activate` 只删除当前 scope 命名空间内的旧版本缓存，绝不触碰其他 scope 的缓存或 `localStorage`；fetch 只查询当前 `CACHE_NAME` 对应的 cache 实例。
 - **不支持 Service Worker 的浏览器**：注册代码以 `"serviceWorker" in navigator` 守卫，缺失时跳过，应用作为普通网页继续可用。
 
 ## 自动化测试策略
@@ -199,12 +199,12 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
    - HTML 中存在 `<link rel="manifest" href="./manifest.webmanifest">`。
    - HTML 中存在 favicon `<link rel="icon">` 指向 `./icons/`。
    - HTML 内联脚本中存在 `navigator.serviceWorker.register("./sw.js"` 且带 `{ scope: "./" }`，且仅在 https/localhost/127.0.0.1 下注册（可断言出现协议/主机判断条件）。
-   - 注册成功的 `then` 分支中存在 `registration.update()` 调用，且存在 `online` 事件监听中再次调用 `registration.update()`。
+   - 注册成功后立即调用 `registration.update()`，且存在 `online` 与页面恢复可见事件监听中再次调用 `registration.update()`。
 3. **Service Worker 单元测试**（在 Node 中用 `vm` 加载 `sw.js`，注入事件桩）：
-   - `install` 事件触发后，预缓存清单中的相对资源（含 `"./preview.html"`，不含作用域根 `"./"`）被加入「Cache Storage」桩。
+   - `install` 事件触发后，预缓存清单中的相对资源（含 `"./preview.html"`，不含作用域根 `"./"`）通过单次 `addAll` 原子加入「Cache Storage」桩；模拟任一必需资源失败时，`install` Promise 必须拒绝。
    - `install` 默认路径**不**调用 `skipWaiting` 等价行为；仅当收到 `message({type:"SKIP_WAITING"})` 时才调用。
    - `fetch` 对导航请求命中缓存外壳；对清单内静态资源命中缓存（纯缓存优先，活动 worker 不发起后台外壳更新）；对未知同作用域 GET 请求在网络可用时走网络、不可用时回退缓存或离线占位。
-   - `activate` 删除非白名单缓存。
+   - `activate` 只删除当前 scope 命名空间内的旧版本缓存，并覆盖相邻路径前缀不会碰撞的回归用例。
    - 测试不得让 `localStorage` 与 Cache Storage 产生交叉污染。
 4. **既有功能回归**：保留并继续通过 `preview_interactions.test.mjs` 验证记分、撤回、结束场次、数据持久化与损坏回退不受 PWA 改造影响。
 
@@ -218,7 +218,7 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
 - **离线撤回**：断网下撤回上一局，总分与局列表正确回退。
 - **离线历史**：断网下查看历史场次与详情，姓名快照与分数正确。
 - **持久化**：离线记分后彻底关闭应用再重新打开（仍离线），数据与上次一致。
-- **在线更新**：恢复联网、发布新版后重新打开，应用通过 `load`/`online` 触发的 `registration.update()` 自动发现新版并出现「发现新版本」提示；点击「立即更新」后刷新即新版；不点击则关闭所有页面后下次冷启动为新版。
+- **在线更新**：恢复联网、发布新版后重新打开或把页面切回前台，应用通过 `load`/`online`/恢复可见触发的 `registration.update()` 自动发现新版并出现「发现新版本」提示；点击「立即更新」后刷新即新版；不点击则关闭所有页面后下次冷启动为新版。
 - **不打断对局**：发布新版时，运行中的对局在新 SW `waiting` 期间不会被切换，外壳与页面版本保持一致，直至用户确认更新或冷启动。
 - **子目录兼容**：在 GitHub Pages 仓库子目录路径下重复上述安装、离线、更新验收，图标与作用域均正确，不出现 404 或作用域错误。
 - **降级**：直接双击本地 `preview.html`（`file://`）仍可作为普通网页记分，仅无离线外壳。
@@ -243,8 +243,8 @@ Service Worker 安装时缓存一组相对路径资源，解析为作用域内�
 
 1. 生成图标资源（192/512，any/maskable）并放入 `doudizhu_app/icons/`。
 2. 新增 `manifest.webmanifest`，`start_url` 为 `"./preview.html"`、`scope`/`id` 为 `"./"`（先写清单契约测试再实现）。
-3. 在 `preview.html` 接入 manifest、favicon 与条件化 SW 注册，注册成功 `then` 中调用 `registration.update()` 并监听 `online` 再次调用（先写接入断言测试）。
-4. 实现 `sw.js` 纯缓存优先外壳、预缓存清单（含 `./preview.html`，不含作用域根）、`install` 不无条件 skipWaiting、`message` 中 `SKIP_WAITING` 触发 `self.skipWaiting()`、`activate` 清旧缓存（先写 SW 单元测试）。
+3. 在 `preview.html` 接入 manifest、favicon 与条件化 SW 注册，注册后调用 `registration.update()` 并监听 `online` 与页面恢复可见再次调用（先写接入断言测试）。
+4. 实现 `sw.js` 纯缓存优先外壳、原子预缓存清单（含 `./preview.html`，不含作用域根）、scope 隔离缓存命名、当前 cache 实例查询、`install` 不无条件 skipWaiting、`message` 中 `SKIP_WAITING` 触发 `self.skipWaiting()`、`activate` 只清当前 scope 旧缓存（先写 SW 单元测试）。
 5. 实现页面端更新提示（`updatefound`/`controllerchange`/`registration.waiting`）与「立即更新」发送 `SKIP_WAITING` 交互（先写交互测试）。
 6. 全量回归 `preview_interactions.test.mjs` + 浏览器人工验收清单。
 

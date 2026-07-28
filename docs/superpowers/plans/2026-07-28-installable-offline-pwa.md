@@ -16,7 +16,9 @@
 - Keep the existing `localStorage` key `doudizhu_state`, schema, scoring rules, and all current interactions unchanged.
 - The application shell uses cache-first behavior; the active Service Worker must not rewrite cached shell assets in the background.
 - Do not call `skipWaiting()` during `install`; call it only after a `SKIP_WAITING` message.
-- Check for a new worker after registration and when the browser fires `online`; do not poll.
+- Check for a new worker after registration, when the browser fires `online`, and when the page returns to the visible foreground; do not poll.
+- Precache the complete required shell atomically with `cache.addAll`; a failed shell request must reject installation so the complete old worker/cache remains active.
+- Namespace cache names by normalized Service Worker scope and query only the current cache instance, so same-origin subdirectory deployments cannot delete or read each other's shell caches.
 - Do not add runtime dependencies, frameworks, authentication, remote storage, synchronization, IndexedDB, or app-store packaging.
 - Service Worker failure must degrade to the existing online/localStorage web application without blocking startup.
 - Follow strict TDD: add a focused failing test, run it and record the expected failure, add the minimum implementation, then rerun the focused and full test suites.
@@ -235,7 +237,7 @@ git commit -m "feat: add PWA manifest and install icons"
 - Create: `doudizhu_app/test/service_worker.test.mjs`
 
 **Interfaces:**
-- Produces: worker messages `{ type: "SKIP_WAITING" }`; cache `doudizhu-shell-v1`; precache URLs resolved with `new URL(relative, self.registration.scope).href`.
+- Produces: worker messages `{ type: "SKIP_WAITING" }`; scope-namespaced cache such as `doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1`; precache URLs resolved with `new URL(relative, self.registration.scope).href`.
 - Consumes: Task 1 asset paths.
 
 - [ ] **Step 1: Write failing worker lifecycle tests**
@@ -259,16 +261,19 @@ function loadWorker(options = {}) {
   let skipWaitingCalls = 0;
   let claimCalls = 0;
   let fetchCalls = 0;
-  const cacheKeys = options.cacheKeys || ['doudizhu-shell-v1'];
+  const cacheKeys = options.cacheKeys || ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1'];
   const cache = {
-    add: async url => { addedUrls.push(String(url)); },
+    addAll: async urls => {
+      if (options.precacheError) throw options.precacheError;
+      addedUrls.push(...urls.map(String));
+    },
+    match: async () => options.cachedResponse,
     put: async () => {},
   };
   const caches = {
     open: async () => cache,
     keys: async () => cacheKeys,
     delete: async key => { deletedCaches.push(key); return true; },
-    match: async () => options.cachedResponse,
   };
   const self = {
     registration: { scope: 'https://example.test/repo/doudizhu_app/' },
@@ -322,6 +327,13 @@ test('install precaches the complete shell without skipping waiting', async () =
   assert.equal(h.skipWaitingCalls, 0);
 });
 
+test('install rejects atomically when any required shell resource fails', async () => {
+  const failure = new Error('required shell resource failed');
+  const h = loadWorker({ precacheError: failure });
+  await assert.rejects(h.dispatchExtendable('install'), failure);
+  assert.equal(h.skipWaitingCalls, 0);
+});
+
 test('SKIP_WAITING message is the only path that activates immediately', async () => {
   const h = loadWorker();
   h.dispatchMessage({ type: 'OTHER' });
@@ -330,10 +342,16 @@ test('SKIP_WAITING message is the only path that activates immediately', async (
   assert.equal(h.skipWaitingCalls, 1);
 });
 
-test('activate deletes old shell caches and claims clients', async () => {
-  const h = loadWorker({ cacheKeys: ['doudizhu-shell-v0', 'doudizhu-shell-v1', 'unrelated-cache'] });
+test('activate deletes only old caches in the current scope and claims clients', async () => {
+  const h = loadWorker({ cacheKeys: [
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v0',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v2::v0',
+    'doudizhu-shell-%2Frepo%2Fother_app::v0',
+    'unrelated-cache',
+  ] });
   await h.dispatchExtendable('activate');
-  assert.deepEqual(h.deletedCaches, ['doudizhu-shell-v0']);
+  assert.deepEqual(h.deletedCaches, ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v0']);
   assert.equal(h.claimCalls, 1);
 });
 
@@ -366,7 +384,8 @@ Expected: FAIL with `ENOENT` for `sw.js`.
 Create `sw.js` with:
 
 ```js
-const CACHE_PREFIX = 'doudizhu-shell-';
+const SCOPE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') || '/';
+const CACHE_PREFIX = `doudizhu-shell-${encodeURIComponent(SCOPE_PATH)}::`;
 const CACHE_NAME = CACHE_PREFIX + 'v1';
 const SHELL_PATHS = [
   './preview.html',
@@ -379,11 +398,7 @@ const SHELL_PATHS = [
 const shellUrls = () => SHELL_PATHS.map(path => new URL(path, self.registration.scope).href);
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(async cache => {
-    for (const url of shellUrls()) {
-      try { await cache.add(url); } catch (_) {}
-    }
-  }));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(shellUrls())));
 });
 
 self.addEventListener('activate', event => {
@@ -404,19 +419,19 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== new URL(self.registration.scope).origin) return;
   event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
     const known = shellUrls().includes(request.url);
     if (known || request.mode === 'navigate') {
-      return (await caches.match(request)) ||
-        (request.mode === 'navigate' && await caches.match(new URL('./preview.html', self.registration.scope).href)) ||
+      return (await cache.match(request)) ||
+        (request.mode === 'navigate' && await cache.match(new URL('./preview.html', self.registration.scope).href)) ||
         fetch(request);
     }
     try {
       const response = await fetch(request);
-      const cache = await caches.open(CACHE_NAME);
       await cache.put(request, response.clone());
       return response;
     } catch (_) {
-      return (await caches.match(request)) ||
+      return (await cache.match(request)) ||
         new Response('当前离线，资源尚未缓存。', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
   })());
@@ -525,13 +540,16 @@ test('service worker eligibility accepts HTTPS and local development only', () =
   assert.equal(app.canUseServiceWorker({ protocol: 'file:', hostname: '' }, { serviceWorker: {} }), false);
 });
 
-test('setup registers relative scope and checks on load and online', async () => {
+test('setup registers relative scope and checks on load, online, and return to foreground', async () => {
   const fakes = createPwaFakes();
   await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
   assert.deepEqual(fakes.registerCalls, [['./sw.js', { scope: './' }]]);
   assert.equal(fakes.updateCalls, 1);
   await fakes.fireWindow('online');
   assert.equal(fakes.updateCalls, 2);
+  fakes.setVisibility('visible');
+  await fakes.fireDocument('visibilitychange');
+  assert.equal(fakes.updateCalls, 3);
 });
 
 test('waiting worker is shown and update button sends SKIP_WAITING', async () => {
@@ -598,7 +616,7 @@ function canUseServiceWorker(locationObj, navigatorObj) {
 }
 
 async function setupPwaUpdates(deps) {
-  const { navigatorObj, windowObj, locationObj, banner, updateButton } = deps;
+  const { navigatorObj, windowObj, locationObj, documentObj, banner, updateButton } = deps;
   if (!canUseServiceWorker(locationObj, navigatorObj)) return null;
   try {
     const registration = await navigatorObj.serviceWorker.register('./sw.js', { scope: './' });
@@ -631,6 +649,9 @@ async function setupPwaUpdates(deps) {
     const check = () => registration.update().catch(() => {});
     check();
     windowObj.addEventListener('online', check);
+    documentObj.addEventListener('visibilitychange', () => {
+      if (documentObj.visibilityState === 'visible') check();
+    });
     return registration;
   } catch (_) {
     return null;
@@ -646,6 +667,7 @@ if (typeof window.addEventListener === 'function') {
     navigatorObj: window.navigator,
     windowObj: window,
     locationObj: window.location,
+    documentObj: document,
     banner: byId('pwa-update'),
     updateButton: byId('pwa-update-now'),
   }));
@@ -684,7 +706,7 @@ Append to `doudizhu_app/test/pwa_assets.test.mjs`:
 ```js
 test('run guide documents iPhone, Android, offline verification, and cache releases', async () => {
   const guide = await readFile(join(root, '运行指南.md'), 'utf8');
-  for (const phrase of ['iPhone', 'Safari', '添加到主屏幕', 'Android', 'Chrome', '飞行模式', 'doudizhu-shell-v1']) {
+  for (const phrase of ['iPhone', 'Safari', '添加到主屏幕', 'Android', 'Chrome', '飞行模式', "CACHE_PREFIX + 'v1'"]) {
     assert.ok(guide.includes(phrase), `missing guide phrase: ${phrase}`);
   }
 });
@@ -707,7 +729,7 @@ Add sections to `运行指南.md` that state:
 - Android: Chrome → menu → 添加到主屏幕/安装应用.
 - First open once while online, then enable airplane mode and verify open/new session/score/undo/history/relaunch.
 - Scores remain in the current phone’s `localStorage` and do not sync.
-- `sw.js` declares `CACHE_NAME` as `CACHE_PREFIX + 'v1'`; every shell release must increment only the suffix (`'v1'` → `'v2'` → `'v3'`) while preserving `CACHE_PREFIX = 'doudizhu-shell-'`. After restoring internet, the page checks on load/online, shows the update notice, and activates only after “立即更新” or closing all old pages.
+- `sw.js` derives `CACHE_PREFIX` from the normalized Service Worker scope and declares `CACHE_NAME` as `CACHE_PREFIX + 'v1'`; every shell release increments only the suffix (`'v1'` → `'v2'` → `'v3'`). After restoring internet, the page checks on load/online/return to visible foreground, shows the update notice, and activates only after “立即更新” or closing all old pages.
 
 - [ ] **Step 4: Run all automated verification**
 
