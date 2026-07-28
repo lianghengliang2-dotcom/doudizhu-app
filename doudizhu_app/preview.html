@@ -22,6 +22,9 @@
     button { cursor: pointer; }
     button:disabled { cursor: not-allowed; opacity: .42; }
     .preview-shell { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
+    .preview-menu-handle { display: block; width: 48px; margin: 0 auto 8px; padding: 8px; border: 0; background: transparent; }
+    .handle-bar { display: block; width: 28px; height: 4px; margin: 0 auto; border-radius: 999px; background: var(--gold-soft); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .tab-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 16px; }
     .tab-bar button { padding: 8px 15px; border: 1px solid var(--gold-soft); border-radius: 8px; background: #1c1410; color: var(--text); font-weight: 700; }
     .tab-bar button:hover, .tab-bar button.active { border-color: var(--gold); }
@@ -94,7 +97,12 @@
 </head>
 <body>
 <div class="preview-shell">
-  <nav class="tab-bar" aria-label="预览页面">
+  <button id="preview-menu-handle" class="preview-menu-handle" type="button"
+          aria-expanded="false" aria-controls="preview-menu">
+    <span class="handle-bar" aria-hidden="true"></span>
+    <span class="sr-only">显示预览页面菜单</span>
+  </button>
+  <nav id="preview-menu" class="tab-bar" aria-label="预览页面" aria-hidden="true" inert>
     <button class="active" data-screen="home-empty">首页(空)</button>
     <button data-screen="home-session">首页(对局中)</button>
     <button data-screen="new-session">新建场次</button>
@@ -400,7 +408,7 @@
     }
   }
 
-  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession, canUseServiceWorker, setupPwaUpdates };
+  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession, canUseServiceWorker, setupPwaUpdates, setPreviewMenuOpen, shouldRevealPreviewMenu };
   let appState = loadState(localStorage);
 
   function byId(id) { return document.getElementById(id); }
@@ -412,6 +420,20 @@
     const el = byId('toast'); if (!el) return;
     el.textContent = message; el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 1800);
+  }
+  function shouldRevealPreviewMenu(startY, currentY, scrollY) {
+    return Number(scrollY) <= 0 && Number(currentY) - Number(startY) >= 48;
+  }
+  function setPreviewMenuOpen(open) {
+    const menu = byId('preview-menu');
+    const handle = byId('preview-menu-handle');
+    const expanded = !!open;
+    handle.setAttribute('aria-expanded', String(expanded));
+    handle.querySelector('.sr-only').textContent =
+      expanded ? '隐藏预览页面菜单' : '显示预览页面菜单';
+    menu.setAttribute('aria-hidden', String(!expanded));
+    menu.inert = !expanded;
+    menu.classList.toggle('open', expanded);
   }
   function syncTabs(id) {
     document.querySelectorAll('.tab-bar button').forEach(button => button.classList.toggle('active', button.getAttribute('data-screen') === id));
@@ -575,7 +597,28 @@
     });
   }
 
-  document.querySelectorAll('.tab-bar button').forEach(button => button.addEventListener('click', () => showScreen(button.getAttribute('data-screen'))));
+  byId('preview-menu-handle').addEventListener('click', () => {
+    setPreviewMenuOpen(byId('preview-menu-handle').getAttribute('aria-expanded') !== 'true');
+  });
+  document.querySelectorAll('.tab-bar button').forEach(button => button.addEventListener('click', () => {
+    showScreen(button.getAttribute('data-screen'));
+    setPreviewMenuOpen(false);
+  }));
+  if (window.addEventListener) {
+    let previewPullStartY = null;
+    window.addEventListener('touchstart', touchEvent => {
+      previewPullStartY = touchEvent.touches && touchEvent.touches[0]
+        ? touchEvent.touches[0].clientY : null;
+    }, { passive: true });
+    window.addEventListener('touchmove', touchEvent => {
+      const touch = touchEvent.touches && touchEvent.touches[0];
+      if (touch && previewPullStartY != null &&
+          shouldRevealPreviewMenu(previewPullStartY, touch.clientY, window.scrollY || 0)) {
+        setPreviewMenuOpen(true);
+        previewPullStartY = null;
+      }
+    }, { passive: true });
+  }
   document.querySelectorAll('.start-btn').forEach(button => button.addEventListener('click', () => { selectedPlayerIds = []; showScreen('new-session'); }));
   document.querySelectorAll('.internal-history').forEach(button => button.addEventListener('click', () => showScreen('history')));
   document.querySelectorAll('.internal-settings').forEach(button => button.addEventListener('click', () => showScreen('settings')));

@@ -536,6 +536,38 @@ test('history name snapshot is not mutated by later player-name edits', () => {
 
 // ====== Part B: DOM wiring — app-internal navigation & controls ===============
 
+test('preview page menu starts closed and the handle toggles it accessibly', () => {
+  const { document } = loadPreview();
+  const menu = document.querySelector('.tab-bar');
+  const handle = document.getElementById('preview-menu-handle');
+  assert.equal(handle.getAttribute('aria-expanded'), 'false');
+  assert.equal(menu.getAttribute('aria-hidden'), 'true');
+  handle.click();
+  assert.equal(handle.getAttribute('aria-expanded'), 'true');
+  assert.equal(menu.getAttribute('aria-hidden'), 'false');
+  handle.click();
+  assert.equal(handle.getAttribute('aria-expanded'), 'false');
+  assert.equal(menu.getAttribute('aria-hidden'), 'true');
+});
+
+test('preview menu pull gesture only reveals at page top after a 48px downward pull', () => {
+  const { window } = loadPreview();
+  const shouldReveal = window.previewApp.shouldRevealPreviewMenu;
+  assert.equal(shouldReveal(100, 149, 0), true);
+  assert.equal(shouldReveal(100, 147, 0), false);
+  assert.equal(shouldReveal(100, 180, 1), false);
+  assert.equal(shouldReveal(100, 20, 0), false);
+});
+
+test('choosing a preview menu destination closes the menu', () => {
+  const { document } = loadPreview();
+  const handle = document.getElementById('preview-menu-handle');
+  handle.click();
+  document.querySelector('.tab-bar button').click();
+  assert.equal(handle.getAttribute('aria-expanded'), 'false');
+  assert.equal(document.querySelector('.tab-bar').getAttribute('aria-hidden'), 'true');
+});
+
 function activeScreen(document) {
   const screens = document.querySelectorAll('.screen');
   return [...screens].find(s => s.classList.contains('active')) || null;
