@@ -58,6 +58,22 @@ Key output: 4 tests passed, 0 failed.
 
 - The headless interaction test validates the production event listener through a deliberately minimal shim. It cannot replace a real-device hit-target or viewport check.
 
+## Parent browser verification
+
+- Loaded the final `v3` Service Worker through the visible update prompt; the page then reported menu padding `48px` and `round-feedback role="status"`.
+- At 360×800, the first menu button occupied y=48..87; `document.elementFromPoint()` at its center resolved to that button, and a real browser click navigated to `screen-home-empty` while closing the menu.
+- At 360×500, the active-session page had `scrollHeight=741`. Opening the menu and scrolling to `scrollY≈220` automatically produced `.open=false`, `aria-expanded=false`, and `aria-hidden=true`.
+- Final viewport measurements: 360×800 (`scrollWidth=360`, `scrollHeight=800`, confirm bottom=564); 390×844 (`390`, `844`, `564`); requested 430×932 (`innerWidth=431`, `scrollWidth=431`, `scrollHeight=932`, confirm bottom=564). All three kept the confirm button fully visible with no horizontal overflow.
+- Temporary viewport overrides were reset and test tabs were finalized.
+
+## Follow-up cache release
+
+- Because the menu hardening changed the precached `preview.html` after the earlier v2 release, a follow-up TDD cycle advanced the shell cache to v3.
+- RED: the focused v3 release test failed against v2.
+- GREEN: the v3 release test passed 1/1 and verifies v1/v2 deletion while preserving v3 and unrelated scopes.
+- Full regression remained 56/56 passing; `git diff --check` passed.
+- Commit: `5488ce0 chore: bump shell cache to v3`.
+
 ## Service Worker v3 release-cache fix
 
 ### TDD evidence
