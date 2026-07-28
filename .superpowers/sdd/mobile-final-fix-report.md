@@ -57,3 +57,32 @@ Key output: 4 tests passed, 0 failed.
 ## Concerns
 
 - The headless interaction test validates the production event listener through a deliberately minimal shim. It cannot replace a real-device hit-target or viewport check.
+
+## Service Worker v3 release-cache fix
+
+### TDD evidence
+
+RED command:
+
+```powershell
+node --test --test-name-pattern "v3 release" doudizhu_app/test/service_worker.test.mjs
+```
+
+Key output: 0 passed, 1 failed. With `CACHE_NAME` at v2, the v3 release test failed because the install path did not open `doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3`.
+
+GREEN command:
+
+```powershell
+node --test --test-name-pattern "v3 release" doudizhu_app/test/service_worker.test.mjs
+```
+
+Key output: 1 passed, 0 failed after incrementing `CACHE_NAME` to v3.
+
+### Release regression verification
+
+| Command | Result |
+| --- | --- |
+| `node --test doudizhu_app/test/preview_interactions.test.mjs doudizhu_app/test/pwa_assets.test.mjs doudizhu_app/test/service_worker.test.mjs` | 56 passed, 0 failed |
+| `git diff --check` | Exit 0; no whitespace errors |
+
+The v3 test verifies that install opens v3, activation retires same-scope v1/v2, and exact deletion leaves v3, a similar-prefix cache, and another scope untouched. Explicit `SKIP_WAITING` behavior remains covered by its existing regression test.

@@ -18,7 +18,7 @@ function loadWorker(options = {}) {
   let skipWaitingCalls = 0;
   let claimCalls = 0;
   let fetchCalls = 0;
-  const cacheKeys = options.cacheKeys || ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2'];
+  const cacheKeys = options.cacheKeys || ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3'];
   const cache = {
     add: async url => {
       addedUrls.push(String(url));
@@ -119,12 +119,13 @@ test('SKIP_WAITING message is the only path that activates immediately', async (
   assert.equal(h.skipWaitingCalls, 1);
 });
 
-test('activate deletes old shell caches and claims clients', async () => {
+test('activate deletes older same-scope shell caches and claims clients', async () => {
   const h = loadWorker({
     cacheKeys: [
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v0',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v2::v0',
       'doudizhu-shell-%2Frepo%2Fother_app::v0',
       'unrelated-cache',
@@ -134,21 +135,30 @@ test('activate deletes old shell caches and claims clients', async () => {
   assert.deepEqual(h.deletedCaches, [
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v0',
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
   ]);
   assert.equal(h.claimCalls, 1);
 });
 
-test('release opens the v2 shell cache and retires v1', async () => {
+test('v3 release opens the current cache, retires v1 and v2, and preserves other scopes', async () => {
   const h = loadWorker({
     cacheKeys: [
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v3::v2',
+      'doudizhu-shell-%2Frepo%2Fother_app::v2',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v30',
     ],
   });
   await h.dispatchExtendable('install');
   await h.dispatchExtendable('activate');
-  assert.ok(h.openedCaches.includes('doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2'));
-  assert.deepEqual(h.deletedCaches, ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1']);
+  assert.ok(h.openedCaches.includes('doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3'));
+  assert.deepEqual(h.deletedCaches, [
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v30',
+  ]);
 });
 
 test('known shell requests use the current scope cache without a global lookup or background fetch', async () => {
