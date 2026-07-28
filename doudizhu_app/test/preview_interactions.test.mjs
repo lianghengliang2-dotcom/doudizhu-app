@@ -550,18 +550,36 @@ test('preview page menu starts closed and the handle toggles it accessibly', () 
   assert.equal(menu.getAttribute('aria-hidden'), 'true');
 });
 
-test('preview menu CSS removes the closed menu from layout and shows .open', () => {
+test('preview menu CSS keeps the closed menu noninteractive and reveals it when open', () => {
   const html = readPreview();
-  assert.match(html, /\.tab-bar\s*\{[^}]*display:\s*none\s*;[^}]*\}/s);
-  assert.match(html, /\.tab-bar\.open\s*\{[^}]*display:\s*flex\s*;[^}]*\}/s);
+  assert.match(html, /\.tab-bar\s*\{[^}]*position:\s*fixed\s*;[^}]*transform:\s*translate\(-50%,\s*-110%\)\s*;[^}]*opacity:\s*0\s*;[^}]*pointer-events:\s*none\s*;[^}]*\}/s);
+  assert.match(html, /\.tab-bar\.open\s*\{[^}]*transform:\s*translate\(-50%,\s*0\)\s*;[^}]*opacity:\s*1\s*;[^}]*pointer-events:\s*auto\s*;[^}]*\}/s);
 });
 
-test('preview menu handle has a centered 44px touch target', () => {
+test('preview menu handle has a centered 44px minimum touch target', () => {
   const html = readPreview();
   const rule = html.match(/\.preview-menu-handle\s*\{([^}]*)\}/s)?.[1] || '';
-  assert.match(rule, /width:\s*44px\s*;/);
-  assert.match(rule, /height:\s*44px\s*;/);
-  assert.match(rule, /place-items:\s*center\s*;/);
+  assert.match(rule, /width:\s*54px\s*;/);
+  assert.match(rule, /min-height:\s*44px\s*;/);
+  assert.match(rule, /left:\s*50%\s*;/);
+  assert.match(rule, /transform:\s*translateX\(-50%\)\s*;/);
+});
+
+test('mobile CSS declares the single-screen layout and safe-area contracts', () => {
+  const html = readPreview();
+  for (const contract of [
+    '@media (max-width: 480px) and (min-height: 800px)',
+    '.session-content',
+    '.scoring-card',
+    '.recent-rounds-toggle',
+    '.bomb-control-row',
+    '.preview-menu-handle',
+    'env(safe-area-inset-top)',
+    'env(safe-area-inset-bottom)',
+    'prefers-reduced-motion',
+  ]) {
+    assert.ok(html.includes(contract), `missing responsive contract: ${contract}`);
+  }
 });
 
 test('preview menu pull gesture only reveals at page top after a 48px downward pull', () => {

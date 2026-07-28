@@ -22,11 +22,11 @@
     button { cursor: pointer; }
     button:disabled { cursor: not-allowed; opacity: .42; }
     .preview-shell { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
-    .preview-menu-handle { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 8px; padding: 0; border: 0; background: transparent; }
-    .handle-bar { display: block; width: 28px; height: 4px; margin: 0 auto; border-radius: 999px; background: var(--gold-soft); }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    .tab-bar { display: none; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 16px; }
-    .tab-bar.open { display: flex; }
+    .preview-menu-handle { position: fixed; top: env(safe-area-inset-top); left: 50%; z-index: 42; width: 54px; height: 24px; min-height: 44px; transform: translateX(-50%); padding: 0; border: 0; background: transparent; color: var(--muted); }
+    .handle-bar { display: block; width: 30px; height: 4px; margin: 5px auto; border-radius: 999px; background: var(--gold-soft); }
+    .tab-bar { position: fixed; top: 0; left: 50%; z-index: 41; width: min(100%, 460px); margin: 0; padding: calc(22px + env(safe-area-inset-top)) 8px 8px; transform: translate(-50%, -110%); opacity: 0; pointer-events: none; background: #090909f5; border-bottom: 1px solid var(--gold-soft); box-shadow: 0 12px 30px #000a; transition: transform .18s ease, opacity .18s ease; }
+    .tab-bar.open { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
     .tab-bar button { padding: 8px 15px; border: 1px solid var(--gold-soft); border-radius: 8px; background: #1c1410; color: var(--text); font-weight: 700; }
     .tab-bar button:hover, .tab-bar button.active { border-color: var(--gold); }
     .tab-bar button.active { background: var(--red); }
@@ -81,8 +81,15 @@
     .check-row label { flex: 1; min-width: 100px; border: 1px solid #3b3025; border-radius: 10px; padding: 10px; background: #17120f; }
     .bomb-row { display: flex; justify-content: center; align-items: center; gap: 16px; }
     .bomb-row button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--gold-soft); background: #17120f; color: var(--text); font-size: 20px; }
+    .recent-rounds-toggle { width: 100%; min-height: 42px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; border: 1px solid #3a2d22; border-radius: 12px; padding: 8px 12px; background: var(--card); color: var(--text); text-align: left; }
+    .recent-rounds-label { color: var(--gold); font-weight: 800; }
+    .recent-rounds-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); text-align: right; }
+    .recent-rounds-toggle[aria-expanded="true"] .disclosure-icon { transform: rotate(180deg); }
+    .bomb-control-row { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; }
+    .bomb-control-row .bomb-row { gap: 12px; }
     .preview-score { text-align: center; font-size: 19px; color: var(--gold); padding: 13px; margin: 12px 0; }
     .feedback { min-height: 22px; margin: 8px 0; color: #ffb4a8; text-align: center; }
+    .feedback:empty { display: none; }
     .history-item { width: 100%; color: var(--text); text-align: left; cursor: pointer; }
     .history-item strong { display: block; }
     .history-item span { color: var(--muted); font-size: 13px; }
@@ -93,7 +100,31 @@
     .update-notice button { flex: 0 0 auto; border: 1px solid #ef4438; border-radius: 8px; padding: 7px 10px; background: var(--red); color: #fff; font-weight: 800; }
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: #f5e6c8; color: #2a1d11; border-radius: 10px; padding: 10px 16px; font-weight: 700; transition: .2s; z-index: 20; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    @media (max-width: 480px) { .preview-shell { padding: 8px 0 24px; } .phone { border-radius: 0; border-left: 0; border-right: 0; } }
+    @media (prefers-reduced-motion: reduce) { .tab-bar, .disclosure-icon { transition: none; } }
+    @media (max-width: 480px) {
+      .preview-shell { padding: 0 0 env(safe-area-inset-bottom); }
+      .phone { width: 100%; min-height: 100dvh; border: 0; border-radius: 0; }
+      .screen { min-height: 100dvh; }
+    }
+    @media (max-width: 480px) and (min-height: 800px) {
+      .app-bar { min-height: 52px; padding: 8px 14px; }
+      .app-bar h1 { font-size: 19px; }
+      .session-content { padding: 10px 12px calc(8px + env(safe-area-inset-bottom)); }
+      .score-grid { gap: 6px; }
+      .score-card { padding: 9px 5px 8px; border-top-width: 3px; }
+      .player-name { font-size: 16px; }
+      .score { margin-top: 4px; font-size: 23px; }
+      .toolbar { gap: 6px; margin: 8px 0; }
+      .toolbar button { min-height: 44px; padding: 8px 5px; }
+      .scoring-title { margin: 8px 0 5px; }
+      .scoring-card { padding: 9px 10px 10px; border-radius: 12px; }
+      .scoring-card .section-title { margin: 7px 0 4px; }
+      .scoring-card .btn-option, .scoring-card .toggle { min-height: 42px; padding: 7px 5px; }
+      .scoring-card .landlord-option { padding: 6px 4px 7px; }
+      .bomb-control-row { margin-top: 5px; }
+      .feedback { min-height: 0; margin: 4px 0; font-size: 13px; }
+      #confirm-round { min-height: 46px; padding: 9px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -137,7 +168,7 @@
           <button class="icon-btn internal-settings" aria-label="设置">⚙</button>
         </div>
       </header>
-      <div class="content">
+      <div class="content session-content">
         <div id="session-empty-note" class="card empty-card">暂无进行中的场次</div>
         <div id="session-workspace">
           <div id="score-grid" class="score-grid"></div>
@@ -154,7 +185,7 @@
           </button>
           <div id="recent-rounds" hidden></div>
           <h2 class="section-title scoring-title">本局记分</h2>
-          <div class="card">
+          <div class="card scoring-card">
             <div class="muted">选择地主</div>
             <div id="landlord-options" class="option-grid"></div>
             <div class="muted section-title">胜负</div>
