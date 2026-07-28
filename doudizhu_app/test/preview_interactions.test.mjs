@@ -86,6 +86,8 @@ class Node {
   getAttribute(k) { return this.attributes[k] != null ? this.attributes[k] : null; }
   hasAttribute(k) { return k in this.attributes; }
   removeAttribute(k) { delete this.attributes[k]; }
+  get inert() { return this.hasAttribute('inert'); }
+  set inert(value) { if (value) this.setAttribute('inert', ''); else this.removeAttribute('inert'); }
   get parentElement() { return this.parentNode && this.parentNode.nodeType === 1 ? this.parentNode : null; }
   appendChild(c) { c.parentNode = this; this.children.push(c); return c; }
   removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) { this.children.splice(i, 1); c.parentNode = null; } return c; }
@@ -224,9 +226,8 @@ function loadPreview(options = {}) {
   const localStorage = new Storage();
   if (options.seed) for (const [k, v] of Object.entries(options.seed)) localStorage.setItem(k, v);
 
-  const window = {};
+  const windowHandlers = new Map();
   const sandbox = {
-    window,
     document: doc,
     localStorage,
     console,
@@ -236,6 +237,13 @@ function loadPreview(options = {}) {
   sandbox.globalThis = sandbox;
   sandbox.window = sandbox;
   sandbox.self = sandbox;
+  sandbox.scrollY = 0;
+  sandbox.addEventListener = (type, handler) => {
+    (windowHandlers.get(type) || windowHandlers.set(type, []).get(type)).push(handler);
+  };
+  sandbox.dispatchEvent = event => {
+    (windowHandlers.get(event.type) || []).forEach(handler => handler.call(sandbox, event));
+  };
 
   // Extract source text directly. The minimal HTML parser intentionally does
   // not implement raw-text elements, so serialising a parsed <script> would
@@ -542,12 +550,31 @@ test('preview page menu starts closed and the handle toggles it accessibly', () 
   const handle = document.getElementById('preview-menu-handle');
   assert.equal(handle.getAttribute('aria-expanded'), 'false');
   assert.equal(menu.getAttribute('aria-hidden'), 'true');
+  assert.equal(menu.classList.contains('open'), false);
+  assert.equal(menu.inert, true);
   handle.click();
   assert.equal(handle.getAttribute('aria-expanded'), 'true');
   assert.equal(menu.getAttribute('aria-hidden'), 'false');
+  assert.equal(menu.classList.contains('open'), true);
+  assert.equal(menu.inert, false);
   handle.click();
   assert.equal(handle.getAttribute('aria-expanded'), 'false');
   assert.equal(menu.getAttribute('aria-hidden'), 'true');
+  assert.equal(menu.classList.contains('open'), false);
+  assert.equal(menu.inert, true);
+});
+
+test('scrolling down closes the preview menu and synchronizes its accessible state', () => {
+  const { document, window } = loadPreview();
+  const menu = document.querySelector('.tab-bar');
+  const handle = document.getElementById('preview-menu-handle');
+  handle.click();
+  window.scrollY = 1;
+  window.dispatchEvent({ type: 'scroll' });
+  assert.equal(handle.getAttribute('aria-expanded'), 'false');
+  assert.equal(menu.getAttribute('aria-hidden'), 'true');
+  assert.equal(menu.classList.contains('open'), false);
+  assert.equal(menu.inert, true);
 });
 
 test('preview menu CSS keeps the closed menu noninteractive and reveals it when open', () => {
@@ -563,6 +590,20 @@ test('preview menu handle has a centered 44px minimum touch target', () => {
   assert.match(rule, /min-height:\s*44px\s*;/);
   assert.match(rule, /left:\s*50%\s*;/);
   assert.match(rule, /transform:\s*translateX\(-50%\)\s*;/);
+});
+
+test('preview menu reserves the handle height before its first action', () => {
+  const html = readPreview();
+  const rule = html.match(/\.tab-bar\s*\{([^}]*)\}/s)?.[1] || '';
+  assert.match(rule, /padding:\s*calc\(48px\s*\+\s*env\(safe-area-inset-top\)\)\s+8px\s+8px\s*;/);
+});
+
+test('feedback remains a status region when empty and reduced motion also disables toast animation', () => {
+  const html = readPreview();
+  assert.match(html, /id="round-feedback" class="feedback" role="status"/);
+  assert.doesNotMatch(html, /\.feedback:empty\s*\{\s*display:\s*none\s*;\s*\}/);
+  assert.match(html, /\.feedback:empty\s*\{[^}]*min-height:\s*0\s*;[^}]*margin:\s*0\s*;[^}]*overflow:\s*hidden\s*;[^}]*\}/s);
+  assert.match(html, /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.toast[^}]*transition:\s*none\s*;/s);
 });
 
 test('mobile CSS declares the single-screen layout and safe-area contracts', () => {
