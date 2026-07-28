@@ -85,6 +85,7 @@
     .setting-item { display: grid; grid-template-columns: 38px 1fr; gap: 11px; align-items: center; margin-bottom: 9px; }
     .setting-item input { width: 100%; background: #0f0d0b; border: 1px solid #4a3a2b; border-radius: 9px; padding: 10px; color: var(--text); }
     .update-notice { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 406px); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px 11px 15px; transform: translateX(-50%); background: #21170f; border: 1px solid var(--gold-soft); border-radius: 12px; box-shadow: 0 12px 30px #0009; color: var(--text); font-size: 14px; z-index: 30; }
+    .update-notice[hidden] { display: none; }
     .update-notice button { flex: 0 0 auto; border: 1px solid #ef4438; border-radius: 8px; padding: 7px 10px; background: var(--red); color: #fff; font-weight: 800; }
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: #f5e6c8; color: #2a1d11; border-radius: 10px; padding: 10px 16px; font-weight: 700; transition: .2s; z-index: 20; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -354,6 +355,7 @@
     try {
       const registration = await navigatorObj.serviceWorker.register('./sw.js', { scope: './' });
       let refreshing = false;
+      let updateRequested = false;
       const showWaiting = () => {
         if (!registration.waiting || !banner) return;
         banner.hidden = false;
@@ -367,10 +369,14 @@
         });
       });
       if (updateButton) updateButton.addEventListener('click', () => {
-        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        if (!registration.waiting) return;
+        try {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          updateRequested = true;
+        } catch (_) {}
       });
       navigatorObj.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
+        if (!updateRequested || refreshing) return;
         refreshing = true;
         windowObj.location.reload();
       });

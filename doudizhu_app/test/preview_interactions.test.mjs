@@ -701,6 +701,7 @@ test('page links the relative manifest, theme color, favicon, and apple touch ic
   assert.match(html, /name="theme-color" content="#151515"/);
   assert.match(html, /rel="icon" href="\.\/icons\/icon-192\.png"/);
   assert.match(html, /rel="apple-touch-icon" href="\.\/icons\/icon-192\.png"/);
+  assert.match(html, /\.update-notice\[hidden\]\s*\{\s*display:\s*none;\s*\}/);
 });
 
 test('service worker eligibility accepts HTTPS and local development only', () => {
@@ -729,12 +730,20 @@ test('waiting worker is shown and update button sends SKIP_WAITING', async () =>
   assert.deepEqual(JSON.parse(JSON.stringify(fakes.messages)), [{ type: 'SKIP_WAITING' }]);
 });
 
-test('controllerchange reloads once and registration failure degrades safely', async () => {
-  const fakes = createPwaFakes();
+test('controllerchange reloads only after an explicit waiting-worker update request', async () => {
+  const firstInstall = createPwaFakes();
+  await loadPreview().window.previewApp.setupPwaUpdates(firstInstall.deps);
+  await firstInstall.fireServiceWorker('controllerchange');
+  assert.equal(firstInstall.reloadCalls, 0);
+
+  const fakes = createPwaFakes({ waiting: true });
   await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
+  await fakes.clickUpdate();
+  assert.deepEqual(JSON.parse(JSON.stringify(fakes.messages)), [{ type: 'SKIP_WAITING' }]);
   await fakes.fireServiceWorker('controllerchange');
   await fakes.fireServiceWorker('controllerchange');
   assert.equal(fakes.reloadCalls, 1);
+
   const failed = createPwaFakes({ registrationError: new Error('offline') });
   assert.equal(await loadPreview().window.previewApp.setupPwaUpdates(failed.deps), null);
 });
