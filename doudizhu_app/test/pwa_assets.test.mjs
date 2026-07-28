@@ -62,7 +62,16 @@ test('generator centers the DDZ label with a RectangleF DrawString overload', as
 
 test('run guide documents iPhone, Android, offline verification, and cache releases', async () => {
   const guide = await readFile(join(root, '运行指南.md'), 'utf8');
-  for (const phrase of ['iPhone', 'Safari', '添加到主屏幕', 'Android', 'Chrome', '飞行模式', 'doudizhu-shell-v1']) {
+  for (const phrase of [
+    'iPhone',
+    'Safari',
+    '添加到主屏幕',
+    'Android',
+    'Chrome',
+    '飞行模式',
+    "CACHE_PREFIX + 'v1'",
+    "'v1' 到 'v2'",
+  ]) {
     assert.ok(guide.includes(phrase), `missing guide phrase: ${phrase}`);
   }
 });
