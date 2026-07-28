@@ -636,6 +636,40 @@ test('scoring panel removes spring/blind controls and clears legacy hidden draft
   assert.equal(persisted.draftRound.blind, false);
 });
 
+test('compact scoring form removes the redundant score preview and aligns bomb controls', () => {
+  const { document } = loadPreview();
+  assert.equal(document.getElementById('round-preview'), null);
+  const bombRow = document.querySelector('.bomb-control-row');
+  assert.ok(bombRow, 'bomb label and counter need one shared row');
+  assert.ok(bombRow.textContent.includes('炸弹数'));
+  assert.ok(bombRow.querySelector('#bomb-minus'));
+  assert.ok(bombRow.querySelector('#bomb-count'));
+  assert.ok(bombRow.querySelector('#bomb-plus'));
+  assert.ok(document.getElementById('round-feedback'));
+  assert.ok(document.getElementById('confirm-round'));
+});
+
+test('recent rounds are collapsed by default and toggle accessibly', () => {
+  const first = loadPreview();
+  let state = first.window.previewApp.defaultState();
+  const ids = state.players.slice(0, 3).map(player => player.id);
+  state = first.window.previewApp.createSession(state, ids);
+  state = first.window.previewApp.confirmRound(state, {
+    landlordId: ids[0], isLandlordWin: true, bombCount: 0, kickStates: {},
+  });
+  const { document } = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
+  const toggle = document.getElementById('recent-rounds-toggle');
+  const list = document.getElementById('recent-rounds');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(list.hasAttribute('hidden'), true);
+  toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(list.hasAttribute('hidden'), false);
+  toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(list.hasAttribute('hidden'), true);
+});
+
 test('script executes without throwing on load', () => {
   const { scriptError } = loadPreview();
   assert.equal(scriptError, undefined, 'preview.html inline script must not throw on load');

@@ -137,9 +137,14 @@
             <button id="undo-last-round" class="secondary" disabled>撤回上一局</button>
             <button id="end-session" class="danger">结束场次</button>
           </div>
-          <h2 class="section-title">最近三局</h2>
-          <div id="recent-rounds"></div>
-          <h2 class="section-title">本局记分</h2>
+          <button id="recent-rounds-toggle" class="recent-rounds-toggle" type="button"
+                  aria-expanded="false" aria-controls="recent-rounds">
+            <span class="recent-rounds-label">最近三局</span>
+            <span id="recent-rounds-summary" class="recent-rounds-summary">暂无记录</span>
+            <span class="disclosure-icon" aria-hidden="true">⌄</span>
+          </button>
+          <div id="recent-rounds" hidden></div>
+          <h2 class="section-title scoring-title">本局记分</h2>
           <div class="card">
             <div class="muted">选择地主</div>
             <div id="landlord-options" class="option-grid"></div>
@@ -150,14 +155,15 @@
             </div>
             <div class="muted section-title">踢 / 反踢</div>
             <div id="kick-options" class="option-grid"></div>
-            <div class="muted section-title">炸弹数</div>
-            <div class="bomb-row">
-              <button id="bomb-minus" aria-label="减少炸弹">−</button>
-              <strong id="bomb-count">0</strong>
-              <button id="bomb-plus" aria-label="增加炸弹">＋</button>
+            <div class="bomb-control-row">
+              <span class="muted">炸弹数</span>
+              <div class="bomb-row">
+                <button id="bomb-minus" aria-label="减少炸弹">−</button>
+                <strong id="bomb-count">0</strong>
+                <button id="bomb-plus" aria-label="增加炸弹">＋</button>
+              </div>
             </div>
-            <div id="round-preview" class="card preview-score">请选择地主和胜负</div>
-            <div id="round-feedback" class="feedback"></div>
+            <div id="round-feedback" class="feedback" aria-live="polite"></div>
             <button id="confirm-round" class="primary wide" disabled>确认记分</button>
           </div>
         </div>
@@ -443,6 +449,18 @@
     const start = byId('start-session');
     if (start) { start.disabled = count !== 3; start.textContent = count === 3 ? '开始场次' : '开始（请选择 3 位玩家）'; }
   }
+  let recentRoundsExpanded = false;
+
+  function setRecentRoundsExpanded(expanded) {
+    recentRoundsExpanded = !!expanded;
+    const toggle = byId('recent-rounds-toggle');
+    const list = byId('recent-rounds');
+    if (!toggle || !list) return;
+    toggle.setAttribute('aria-expanded', String(recentRoundsExpanded));
+    if (recentRoundsExpanded) list.removeAttribute('hidden');
+    else list.setAttribute('hidden', '');
+  }
+
   function renderHomeSession() {
     const session = appState.activeSession;
     const empty = byId('session-empty-note'), workspace = byId('session-workspace');
@@ -463,6 +481,12 @@
     byId('recent-rounds').innerHTML = recent.length ? recent.map(round =>
       '<div class="card round-row"><span>第 '+round.index+' 局 · '+escapeHtml(playerById(round.landlordId).name)+'地主</span><strong>'+(round.isLandlordWin?'胜':'负')+'</strong></div>'
     ).join('') : '<div class="card empty-card">还没有记分记录</div>';
+    const summary = byId('recent-rounds-summary');
+    summary.textContent = recent.length
+      ? '第 ' + recent[0].index + ' 局 · ' + playerById(recent[0].landlordId).name +
+        '地主 ' + (recent[0].isLandlordWin ? '胜' : '负')
+      : '暂无记录';
+    setRecentRoundsExpanded(false);
     renderDraft();
   }
   function renderDraft() {
@@ -519,15 +543,6 @@
     }
     const ready = !!draft.landlordId && typeof draft.isLandlordWin === 'boolean';
     byId('confirm-round').disabled = !ready;
-    if (ready) {
-      const farmers = session.playerIds.filter(id => id !== draft.landlordId);
-      const r = calcRoundScores({
-        ...draft,
-        farmerAKickCount: Number(draft.kickStates[farmers[0]] || 0),
-        farmerBKickCount: Number(draft.kickStates[farmers[1]] || 0)
-      });
-      byId('round-preview').textContent = '预览：地主 ' + (r.landlordScore > 0 ? '+' : '') + r.landlordScore + '，农民 ' + r.farmerAScore + ' / ' + r.farmerBScore;
-    } else byId('round-preview').textContent = '请选择地主和胜负';
     if (hadLegacyBoost) persist();
   }
   function renderHistory() {
@@ -599,6 +614,9 @@
   byId('landlord-loss').addEventListener('click', () => { appState.draftRound.isLandlordWin = false; persist(); renderDraft(); });
   byId('bomb-minus').addEventListener('click', () => { appState.draftRound.bombCount = Math.max(0, appState.draftRound.bombCount - 1); persist(); renderDraft(); });
   byId('bomb-plus').addEventListener('click', () => { appState.draftRound.bombCount += 1; persist(); renderDraft(); });
+  byId('recent-rounds-toggle').addEventListener('click', () => {
+    setRecentRoundsExpanded(!recentRoundsExpanded);
+  });
   byId('confirm-round').addEventListener('click', () => {
     try { appState = confirmRound(appState, appState.draftRound); persist(); renderHomeSession(); byId('round-feedback').textContent = '记分成功'; showToast('本局已记分'); }
     catch (error) { byId('round-feedback').textContent = error.message; }
