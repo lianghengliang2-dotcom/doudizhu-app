@@ -552,7 +552,7 @@ test('preview menu is always visible as six short navigation choices', () => {
   assert.equal(menu.hasAttribute('inert'), false);
   assert.deepEqual(
     [...menu.querySelectorAll('button')].map(button => button.textContent.trim()),
-    ['空局', '对局', '新建', '历史', '详情', '设置'],
+    ['空桌', '对局', '新建', '历史', '详情', '设置'],
   );
 });
 
