@@ -544,58 +544,38 @@ test('history name snapshot is not mutated by later player-name edits', () => {
 
 // ====== Part B: DOM wiring — app-internal navigation & controls ===============
 
-test('preview page menu starts closed and the handle toggles it accessibly', () => {
+test('preview menu is always visible as six short navigation choices', () => {
   const { document } = loadPreview();
-  const menu = document.querySelector('.tab-bar');
-  const handle = document.getElementById('preview-menu-handle');
-  assert.equal(handle.getAttribute('aria-expanded'), 'false');
-  assert.equal(menu.getAttribute('aria-hidden'), 'true');
-  assert.equal(menu.classList.contains('open'), false);
-  assert.equal(menu.inert, true);
-  handle.click();
-  assert.equal(handle.getAttribute('aria-expanded'), 'true');
-  assert.equal(menu.getAttribute('aria-hidden'), 'false');
-  assert.equal(menu.classList.contains('open'), true);
-  assert.equal(menu.inert, false);
-  handle.click();
-  assert.equal(handle.getAttribute('aria-expanded'), 'false');
-  assert.equal(menu.getAttribute('aria-hidden'), 'true');
-  assert.equal(menu.classList.contains('open'), false);
-  assert.equal(menu.inert, true);
+  const menu = document.getElementById('preview-menu');
+  assert.equal(document.getElementById('preview-menu-handle'), null);
+  assert.equal(menu.hasAttribute('aria-hidden'), false);
+  assert.equal(menu.hasAttribute('inert'), false);
+  assert.deepEqual(
+    [...menu.querySelectorAll('button')].map(button => button.textContent.trim()),
+    ['空局', '对局', '新建', '历史', '详情', '设置'],
+  );
 });
 
-test('scrolling down closes the preview menu and synchronizes its accessible state', () => {
-  const { document, window } = loadPreview();
-  const menu = document.querySelector('.tab-bar');
-  const handle = document.getElementById('preview-menu-handle');
-  handle.click();
-  window.scrollY = 1;
-  window.dispatchEvent({ type: 'scroll' });
-  assert.equal(handle.getAttribute('aria-expanded'), 'false');
-  assert.equal(menu.getAttribute('aria-hidden'), 'true');
-  assert.equal(menu.classList.contains('open'), false);
-  assert.equal(menu.inert, true);
+test('persistent preview choices still navigate and update the active item', () => {
+  const { document } = loadPreview();
+  const menuButtons = [...document.querySelectorAll('#preview-menu button')];
+  assert.equal(menuButtons.length, 6);
+  menuButtons[3].click();
+  assert.equal(activeScreen(document)?.id, 'screen-history');
+  assert.equal(menuButtons[3].classList.contains('active'), true);
+  assert.equal(menuButtons[0].classList.contains('active'), false);
 });
 
-test('preview menu CSS keeps the closed menu noninteractive and reveals it when open', () => {
+test('persistent menu CSS keeps six touchable choices on one row', () => {
   const html = readPreview();
-  assert.match(html, /\.tab-bar\s*\{[^}]*position:\s*fixed\s*;[^}]*transform:\s*translate\(-50%,\s*-110%\)\s*;[^}]*opacity:\s*0\s*;[^}]*pointer-events:\s*none\s*;[^}]*\}/s);
-  assert.match(html, /\.tab-bar\.open\s*\{[^}]*transform:\s*translate\(-50%,\s*0\)\s*;[^}]*opacity:\s*1\s*;[^}]*pointer-events:\s*auto\s*;[^}]*\}/s);
-});
-
-test('preview menu handle has a centered 44px minimum touch target', () => {
-  const html = readPreview();
-  const rule = html.match(/\.preview-menu-handle\s*\{([^}]*)\}/s)?.[1] || '';
-  assert.match(rule, /width:\s*54px\s*;/);
-  assert.match(rule, /min-height:\s*44px\s*;/);
-  assert.match(rule, /left:\s*50%\s*;/);
-  assert.match(rule, /transform:\s*translateX\(-50%\)\s*;/);
-});
-
-test('preview menu reserves the handle height before its first action', () => {
-  const html = readPreview();
-  const rule = html.match(/\.tab-bar\s*\{([^}]*)\}/s)?.[1] || '';
-  assert.match(rule, /padding:\s*calc\(48px\s*\+\s*env\(safe-area-inset-top\)\)\s+8px\s+8px\s*;/);
+  const menuRule = html.match(/\.tab-bar\s*\{([^}]*)\}/s)?.[1] || '';
+  const buttonRule = html.match(/\.tab-bar button\s*\{([^}]*)\}/s)?.[1] || '';
+  assert.match(menuRule, /display:\s*grid\s*;/);
+  assert.match(menuRule, /grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)\s*;/);
+  assert.match(menuRule, /position:\s*static\s*;/);
+  assert.match(menuRule, /width:\s*min\(100%,\s*430px\)\s*;/);
+  assert.match(buttonRule, /min-height:\s*44px\s*;/);
+  assert.match(buttonRule, /white-space:\s*nowrap\s*;/);
 });
 
 test('feedback remains a status region when empty and reduced motion also disables toast animation', () => {
@@ -614,7 +594,6 @@ test('mobile CSS declares the single-screen layout and safe-area contracts', () 
     '.scoring-card',
     '.recent-rounds-toggle',
     '.bomb-control-row',
-    '.preview-menu-handle',
     'env(safe-area-inset-top)',
     'env(safe-area-inset-bottom)',
     'prefers-reduced-motion',
@@ -623,22 +602,38 @@ test('mobile CSS declares the single-screen layout and safe-area contracts', () 
   }
 });
 
-test('preview menu pull gesture only reveals at page top after a 48px downward pull', () => {
-  const { window } = loadPreview();
-  const shouldReveal = window.previewApp.shouldRevealPreviewMenu;
-  assert.equal(shouldReveal(100, 149, 0), true);
-  assert.equal(shouldReveal(100, 147, 0), false);
-  assert.equal(shouldReveal(100, 180, 1), false);
-  assert.equal(shouldReveal(100, 20, 0), false);
+test('outcome controls use large short labels and purpose-specific classes', () => {
+  const { document } = loadPreview();
+  const win = document.getElementById('landlord-win');
+  const loss = document.getElementById('landlord-loss');
+  assert.equal(win.textContent.trim(), '赢');
+  assert.equal(loss.textContent.trim(), '输');
+  assert.equal(win.classList.contains('outcome-win'), true);
+  assert.equal(loss.classList.contains('outcome-loss'), true);
+  const html = readPreview();
+  assert.match(html, /\.outcome-toggle\s*\{[^}]*min-height:\s*48px\s*;[^}]*font-size:\s*23px\s*;[^}]*font-weight:\s*900\s*;/s);
+  assert.match(html, /\.outcome-win\.selected\s*\{[^}]*background:\s*#b91c1c\s*;[^}]*color:\s*#fff4cf\s*;/s);
+  assert.match(html, /\.outcome-loss\.selected\s*\{[^}]*background:\s*#176b68\s*;[^}]*color:\s*#fff\s*;/s);
 });
 
-test('choosing a preview menu destination closes the menu', () => {
-  const { document } = loadPreview();
-  const handle = document.getElementById('preview-menu-handle');
-  handle.click();
-  document.querySelector('.tab-bar button').click();
-  assert.equal(handle.getAttribute('aria-expanded'), 'false');
-  assert.equal(document.querySelector('.tab-bar').getAttribute('aria-hidden'), 'true');
+test('win and loss selection still map to the existing boolean draft state', () => {
+  const first = loadPreview();
+  let state = first.window.previewApp.defaultState();
+  state = first.window.previewApp.createSession(
+    state,
+    state.players.slice(0, 3).map(player => player.id),
+  );
+  const loaded = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
+  const win = loaded.document.getElementById('landlord-win');
+  const loss = loaded.document.getElementById('landlord-loss');
+  win.click();
+  assert.equal(win.classList.contains('selected'), true);
+  assert.equal(loss.classList.contains('selected'), false);
+  loss.click();
+  assert.equal(win.classList.contains('selected'), false);
+  assert.equal(loss.classList.contains('selected'), true);
+  const persisted = JSON.parse(loaded.localStorage.getItem('doudizhu_state'));
+  assert.equal(persisted.draftRound.isLandlordWin, false);
 });
 
 function activeScreen(document) {

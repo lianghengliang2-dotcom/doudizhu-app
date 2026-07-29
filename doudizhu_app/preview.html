@@ -22,12 +22,27 @@
     button { cursor: pointer; }
     button:disabled { cursor: not-allowed; opacity: .42; }
     .preview-shell { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-    .preview-menu-handle { position: fixed; top: env(safe-area-inset-top); left: 50%; z-index: 42; width: 54px; height: 24px; min-height: 44px; transform: translateX(-50%); padding: 0; border: 0; background: transparent; color: var(--muted); }
-    .handle-bar { display: block; width: 30px; height: 4px; margin: 5px auto; border-radius: 999px; background: var(--gold-soft); }
-    .tab-bar { position: fixed; top: 0; left: 50%; z-index: 41; width: min(100%, 460px); margin: 0; padding: calc(48px + env(safe-area-inset-top)) 8px 8px; transform: translate(-50%, -110%); opacity: 0; pointer-events: none; background: #090909f5; border-bottom: 1px solid var(--gold-soft); box-shadow: 0 12px 30px #000a; transition: transform .18s ease, opacity .18s ease; }
-    .tab-bar.open { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-    .tab-bar button { padding: 8px 15px; border: 1px solid var(--gold-soft); border-radius: 8px; background: #1c1410; color: var(--text); font-weight: 700; }
+    .tab-bar {
+      position: static;
+      width: min(100%, 430px);
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 4px;
+      margin: 0 auto 6px;
+      padding: calc(4px + env(safe-area-inset-top)) 6px 0;
+    }
+    .tab-bar button {
+      min-width: 0;
+      min-height: 44px;
+      padding: 6px 2px;
+      border: 1px solid var(--gold-soft);
+      border-radius: 8px;
+      background: #1c1410;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
     .tab-bar button:hover, .tab-bar button.active { border-color: var(--gold); }
     .tab-bar button.active { background: var(--red); }
     .phone { width: min(100%, 430px); min-height: 690px; margin: 0 auto; border: 3px solid #303030; border-radius: 26px; overflow: hidden; background: var(--phone); box-shadow: 0 20px 70px #0008; }
@@ -76,7 +91,26 @@
     .player-label { font-weight: 700; }
     .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .toggle { border: 1px solid #4a3a2b; background: #17120f; color: var(--text); border-radius: 10px; padding: 10px; }
-    .toggle.selected { background: var(--red); border-color: #ef4438; }
+    .outcome-toggle {
+      min-height: 48px;
+      font-size: 23px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: .16em;
+      text-indent: .16em;
+    }
+    .outcome-win.selected {
+      border-color: #ef4444;
+      background: #b91c1c;
+      color: #fff4cf;
+      box-shadow: inset 0 0 0 1px var(--gold);
+    }
+    .outcome-loss.selected {
+      border-color: #38b2ac;
+      background: #176b68;
+      color: #fff;
+      box-shadow: inset 0 0 0 1px #5eead4;
+    }
     .check-row { display: flex; flex-wrap: wrap; gap: 8px; }
     .check-row label { flex: 1; min-width: 100px; border: 1px solid #3b3025; border-radius: 10px; padding: 10px; background: #17120f; }
     .bomb-row { display: flex; justify-content: center; align-items: center; gap: 16px; }
@@ -100,11 +134,11 @@
     .update-notice button { flex: 0 0 auto; border: 1px solid #ef4438; border-radius: 8px; padding: 7px 10px; background: var(--red); color: #fff; font-weight: 800; }
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: #f5e6c8; color: #2a1d11; border-radius: 10px; padding: 10px 16px; font-weight: 700; transition: .2s; z-index: 20; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    @media (prefers-reduced-motion: reduce) { .tab-bar, .disclosure-icon, .toast { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .disclosure-icon, .toast { transition: none; } }
     @media (max-width: 480px) {
-      .preview-shell { padding: 0 0 env(safe-area-inset-bottom); }
-      .phone { width: 100%; min-height: 100dvh; border: 0; border-radius: 0; }
-      .screen { min-height: 100dvh; }
+      .preview-shell { min-height: 100dvh; padding: 0 0 env(safe-area-inset-bottom); }
+      .phone { width: 100%; min-height: calc(100dvh - 54px - env(safe-area-inset-top)); border: 0; border-radius: 0; }
+      .screen { min-height: calc(100dvh - 54px - env(safe-area-inset-top)); }
     }
     @media (max-width: 480px) and (min-height: 800px) {
       .app-bar { min-height: 52px; padding: 8px 14px; }
@@ -119,7 +153,8 @@
       .scoring-title { margin: 8px 0 5px; }
       .scoring-card { padding: 9px 10px 10px; border-radius: 12px; }
       .scoring-card .section-title { margin: 7px 0 4px; }
-      .scoring-card .btn-option, .scoring-card .toggle { min-height: 42px; padding: 7px 5px; }
+      .scoring-card .btn-option { min-height: 42px; padding: 7px 5px; }
+      .scoring-card .outcome-toggle { min-height: 48px; padding: 7px 5px; }
       .scoring-card .landlord-option { padding: 6px 4px 7px; }
       .bomb-control-row { margin-top: 5px; }
       .feedback { min-height: 0; margin: 4px 0; font-size: 13px; }
@@ -129,17 +164,12 @@
 </head>
 <body>
 <div class="preview-shell">
-  <button id="preview-menu-handle" class="preview-menu-handle" type="button"
-          aria-expanded="false" aria-controls="preview-menu">
-    <span class="handle-bar" aria-hidden="true"></span>
-    <span class="sr-only">显示预览页面菜单</span>
-  </button>
-  <nav id="preview-menu" class="tab-bar" aria-label="预览页面" aria-hidden="true" inert>
-    <button class="active" data-screen="home-empty">首页(空)</button>
-    <button data-screen="home-session">首页(对局中)</button>
-    <button data-screen="new-session">新建场次</button>
-    <button data-screen="history">历史场次</button>
-    <button data-screen="detail">场次详情</button>
+  <nav id="preview-menu" class="tab-bar" aria-label="预览页面">
+    <button class="active" data-screen="home-empty">空局</button>
+    <button data-screen="home-session">对局</button>
+    <button data-screen="new-session">新建</button>
+    <button data-screen="history">历史</button>
+    <button data-screen="detail">详情</button>
     <button data-screen="settings">设置</button>
   </nav>
 
@@ -190,8 +220,8 @@
             <div id="landlord-options" class="option-grid"></div>
             <div class="muted section-title">胜负</div>
             <div class="toggle-grid">
-              <button id="landlord-win" class="toggle">地主赢</button>
-              <button id="landlord-loss" class="toggle">地主输</button>
+              <button id="landlord-win" class="toggle outcome-toggle outcome-win">赢</button>
+              <button id="landlord-loss" class="toggle outcome-toggle outcome-loss">输</button>
             </div>
             <div class="muted section-title">踢 / 反踢</div>
             <div id="kick-options" class="option-grid"></div>
@@ -440,7 +470,7 @@
     }
   }
 
-  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession, canUseServiceWorker, setupPwaUpdates, setPreviewMenuOpen, shouldRevealPreviewMenu };
+  window.previewApp = { STORAGE_KEY, defaultState, loadState, saveState, calcBaseScore, calcRoundScores, createSession, confirmRound, undoLastRound, endSession, canUseServiceWorker, setupPwaUpdates };
   let appState = loadState(localStorage);
 
   function byId(id) { return document.getElementById(id); }
@@ -452,20 +482,6 @@
     const el = byId('toast'); if (!el) return;
     el.textContent = message; el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 1800);
-  }
-  function shouldRevealPreviewMenu(startY, currentY, scrollY) {
-    return Number(scrollY) <= 0 && Number(currentY) - Number(startY) >= 48;
-  }
-  function setPreviewMenuOpen(open) {
-    const menu = byId('preview-menu');
-    const handle = byId('preview-menu-handle');
-    const expanded = !!open;
-    handle.setAttribute('aria-expanded', String(expanded));
-    handle.querySelector('.sr-only').textContent =
-      expanded ? '隐藏预览页面菜单' : '显示预览页面菜单';
-    menu.setAttribute('aria-hidden', String(!expanded));
-    menu.inert = !expanded;
-    menu.classList.toggle('open', expanded);
   }
   function syncTabs(id) {
     document.querySelectorAll('.tab-bar button').forEach(button => button.classList.toggle('active', button.getAttribute('data-screen') === id));
@@ -629,31 +645,9 @@
     });
   }
 
-  byId('preview-menu-handle').addEventListener('click', () => {
-    setPreviewMenuOpen(byId('preview-menu-handle').getAttribute('aria-expanded') !== 'true');
+  document.querySelectorAll('.tab-bar button').forEach(button => {
+    button.addEventListener('click', () => showScreen(button.getAttribute('data-screen')));
   });
-  document.querySelectorAll('.tab-bar button').forEach(button => button.addEventListener('click', () => {
-    showScreen(button.getAttribute('data-screen'));
-    setPreviewMenuOpen(false);
-  }));
-  if (window.addEventListener) {
-    let previewPullStartY = null;
-    window.addEventListener('touchstart', touchEvent => {
-      previewPullStartY = touchEvent.touches && touchEvent.touches[0]
-        ? touchEvent.touches[0].clientY : null;
-    }, { passive: true });
-    window.addEventListener('touchmove', touchEvent => {
-      const touch = touchEvent.touches && touchEvent.touches[0];
-      if (touch && previewPullStartY != null &&
-          shouldRevealPreviewMenu(previewPullStartY, touch.clientY, window.scrollY || 0)) {
-        setPreviewMenuOpen(true);
-        previewPullStartY = null;
-      }
-    }, { passive: true });
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 0) setPreviewMenuOpen(false);
-    }, { passive: true });
-  }
   document.querySelectorAll('.start-btn').forEach(button => button.addEventListener('click', () => { selectedPlayerIds = []; showScreen('new-session'); }));
   document.querySelectorAll('.internal-history').forEach(button => button.addEventListener('click', () => showScreen('history')));
   document.querySelectorAll('.internal-settings').forEach(button => button.addEventListener('click', () => showScreen('settings')));
