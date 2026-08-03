@@ -1,6 +1,6 @@
 const SCOPE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') || '/';
 const CACHE_PREFIX = `doudizhu-shell-${encodeURIComponent(SCOPE_PATH)}::`;
-const CACHE_NAME = CACHE_PREFIX + 'v4';
+const CACHE_NAME = CACHE_PREFIX + 'v5';
 const SHELL_PATHS = [
   './preview.html',
   './manifest.webmanifest',
