@@ -151,6 +151,7 @@ test('v5 release opens the current cache, retires v1 through v4, and preserves o
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v4',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v5::v4',
       'doudizhu-shell-%2Frepo%2Fother_app::v4',
     ],
