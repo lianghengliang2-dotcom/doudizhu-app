@@ -11,6 +11,7 @@ function loadWorker(options = {}) {
   const handlers = new Map();
   const addedUrls = [];
   const addAllCalls = [];
+  const addAllRequestCalls = [];
   const openedCaches = [];
   const deletedCaches = [];
   const cacheMatchCalls = [];
@@ -18,14 +19,16 @@ function loadWorker(options = {}) {
   let skipWaitingCalls = 0;
   let claimCalls = 0;
   let fetchCalls = 0;
-  const cacheKeys = options.cacheKeys || ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5'];
+  const cacheKeys = options.cacheKeys || ['doudizhu-shell-%2Frepo%2Fdoudizhu_app::v6'];
   const cache = {
     add: async url => {
       addedUrls.push(String(url));
       if (options.precacheError) throw options.precacheError;
     },
     addAll: async urls => {
-      const normalized = [...urls].map(String);
+      const requests = [...urls];
+      const normalized = requests.map(request => request.url || String(request));
+      addAllRequestCalls.push(requests);
       addAllCalls.push(normalized);
       if (options.precacheError) throw options.precacheError;
       addedUrls.push(...normalized);
@@ -57,12 +60,13 @@ function loadWorker(options = {}) {
     return new Response(`network:${request.url}`);
   };
   vm.runInNewContext(readFileSync(join(appRoot, 'sw.js'), 'utf8'), {
-    self, caches, fetch, URL, Response, Promise,
+    self, caches, fetch, URL, Request, Response, Promise,
   });
 
   return {
     addedUrls,
     addAllCalls,
+    addAllRequestCalls,
     openedCaches,
     deletedCaches,
     cacheMatchCalls,
@@ -87,7 +91,7 @@ function loadWorker(options = {}) {
   };
 }
 
-test('install precaches the complete shell without skipping waiting', async () => {
+test('install precaches the complete shell with cache reload without skipping waiting', async () => {
   const h = loadWorker();
   await h.dispatchExtendable('install');
   const expected = [
@@ -99,6 +103,7 @@ test('install precaches the complete shell without skipping waiting', async () =
     'https://example.test/repo/doudizhu_app/icons/maskable-512.png',
   ];
   assert.deepEqual(h.addAllCalls, [expected]);
+  assert.deepEqual(h.addAllRequestCalls[0].map(request => request.cache), Array(6).fill('reload'));
   assert.deepEqual(h.addedUrls, expected);
   assert.equal(h.skipWaitingCalls, 0);
 });
@@ -128,6 +133,7 @@ test('activate deletes older same-scope shell caches and claims clients', async 
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v4',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v6',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v2::v0',
       'doudizhu-shell-%2Frepo%2Fother_app::v0',
       'unrelated-cache',
@@ -140,11 +146,12 @@ test('activate deletes older same-scope shell caches and claims clients', async 
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v4',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5',
   ]);
   assert.equal(h.claimCalls, 1);
 });
 
-test('v5 release opens the current cache, retires v1 through v4, and preserves other scopes', async () => {
+test('v6 release opens the current cache, retires v1 through v5, and preserves other scopes', async () => {
   const h = loadWorker({
     cacheKeys: [
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
@@ -152,18 +159,20 @@ test('v5 release opens the current cache, retires v1 through v4, and preserves o
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v4',
       'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5',
-      'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v5::v4',
-      'doudizhu-shell-%2Frepo%2Fother_app::v4',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v6',
+      'doudizhu-shell-%2Frepo%2Fdoudizhu_app-v6::v5',
+      'doudizhu-shell-%2Frepo%2Fother_app::v5',
     ],
   });
   await h.dispatchExtendable('install');
   await h.dispatchExtendable('activate');
-  assert.ok(h.openedCaches.includes('doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5'));
+  assert.ok(h.openedCaches.includes('doudizhu-shell-%2Frepo%2Fdoudizhu_app::v6'));
   assert.deepEqual(h.deletedCaches, [
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v1',
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v2',
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v3',
     'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v4',
+    'doudizhu-shell-%2Frepo%2Fdoudizhu_app::v5',
   ]);
 });
 

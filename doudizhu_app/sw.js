@@ -1,6 +1,6 @@
 const SCOPE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') || '/';
 const CACHE_PREFIX = `doudizhu-shell-${encodeURIComponent(SCOPE_PATH)}::`;
-const CACHE_NAME = CACHE_PREFIX + 'v5';
+const CACHE_NAME = CACHE_PREFIX + 'v6';
 const SHELL_PATHS = [
   './preview.html',
   './manifest.webmanifest',
@@ -12,7 +12,9 @@ const SHELL_PATHS = [
 const shellUrls = () => SHELL_PATHS.map(path => new URL(path, self.registration.scope).href);
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(shellUrls())));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(
+    shellUrls().map(url => new Request(url, { cache: 'reload' }))
+  )));
 });
 
 self.addEventListener('activate', event => {
