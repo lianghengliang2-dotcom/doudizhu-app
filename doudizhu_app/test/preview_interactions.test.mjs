@@ -111,7 +111,13 @@ class Node {
     for (const c of this.children) s += serializeNode(c);
     return s + (this._text || '');
   }
-  set innerHTML(v) { this.children = []; this._rawHtml = String(v); this._text = String(v); }
+  set innerHTML(v) {
+    this._rawHtml = String(v);
+    this._text = '';
+    const parsed = parseHtml(this._rawHtml);
+    this.children = parsed.children;
+    this.children.forEach(child => { child.parentNode = this; });
+  }
 }
 
 function serializeNode(n) {
@@ -749,22 +755,32 @@ test('compact scoring form removes the redundant score preview and aligns bomb c
   assert.ok(document.getElementById('confirm-round'));
 });
 
-test('recent rounds are collapsed by default and toggle accessibly', () => {
+test('recent rounds open by default and show named signed score changes', () => {
   const first = loadPreview();
   let state = first.window.previewApp.defaultState();
   const ids = state.players.slice(0, 3).map(player => player.id);
   state = first.window.previewApp.createSession(state, ids);
   state = first.window.previewApp.confirmRound(state, {
-    landlordId: ids[0], isLandlordWin: true, bombCount: 0, kickStates: {},
+    landlordId: ids[2], isLandlordWin: true, bombCount: 1, kickStates: {},
   });
   const { document } = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
   const toggle = document.getElementById('recent-rounds-toggle');
   const list = document.getElementById('recent-rounds');
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
-  assert.equal(list.hasAttribute('hidden'), true);
-  toggle.click();
   assert.equal(toggle.getAttribute('aria-expanded'), 'true');
   assert.equal(list.hasAttribute('hidden'), false);
+
+  const detail = list.querySelector('.round-detail');
+  assert.ok(detail);
+  assert.match(detail.textContent, /第 1 局/);
+  assert.match(detail.textContent, /王五地主/);
+  assert.match(detail.textContent, /胜/);
+  assert.match(detail.textContent, /张三\s*-10/);
+  assert.match(detail.textContent, /李四\s*-10/);
+  assert.match(detail.textContent, /王五\s*\+20/);
+  const text = detail.querySelector('.round-scores').textContent;
+  assert.ok(text.indexOf('张三') < text.indexOf('李四'));
+  assert.ok(text.indexOf('李四') < text.indexOf('王五'));
+
   toggle.click();
   assert.equal(toggle.getAttribute('aria-expanded'), 'false');
   assert.equal(list.hasAttribute('hidden'), true);
