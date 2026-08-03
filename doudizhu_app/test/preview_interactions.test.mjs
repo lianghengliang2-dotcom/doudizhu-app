@@ -784,6 +784,9 @@ test('recent rounds open by default and show named signed score changes', () => 
   toggle.click();
   assert.equal(toggle.getAttribute('aria-expanded'), 'false');
   assert.equal(list.hasAttribute('hidden'), true);
+  toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(list.hasAttribute('hidden'), false);
 });
 
 test('script executes without throwing on load', () => {
