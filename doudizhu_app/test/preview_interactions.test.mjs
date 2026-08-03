@@ -55,6 +55,7 @@ class Node {
   }
   get id() { return this.attributes.id || ''; }
   get className() { return this.attributes.class || ''; }
+  set className(value) { this.setAttribute('class', value); }
   get dataset() {
     const ds = {};
     for (const k of Object.keys(this.attributes)) {
@@ -162,14 +163,15 @@ function parseHtml(html) {
   return root;
 }
 
-const SIMPLE_SELECTOR_RE = /^([a-zA-Z][\w-]*)?(?:#([\w-]+))?(?:\.([\w-]+))?$/;
+const SIMPLE_SELECTOR_RE = /^([a-zA-Z][\w-]*)?(?:#([\w-]+))?(?:\.([\w-]+))?(?:\[([\w-]+)(?:="([^"]*)")?\])?$/;
 function matchesSimple(el, sel) {
   const m = sel.match(SIMPLE_SELECTOR_RE);
   if (!m) return false;
-  const [, tag, id, cls] = m;
+  const [, tag, id, cls, attr, attrValue] = m;
   if (tag && el.tagName !== tag.toUpperCase()) return false;
   if (id && el.id !== id) return false;
   if (cls && !(el.className || '').split(/\s+/).includes(cls)) return false;
+  if (attr && (!el.hasAttribute(attr) || (attrValue != null && el.getAttribute(attr) !== attrValue))) return false;
   return true;
 }
 
@@ -787,6 +789,58 @@ test('recent rounds open by default and show named signed score changes', () => 
   toggle.click();
   assert.equal(toggle.getAttribute('aria-expanded'), 'true');
   assert.equal(list.hasAttribute('hidden'), false);
+});
+
+test('history list shows final totals and detail shows every round score change', () => {
+  const first = loadPreview();
+  let state = first.window.previewApp.defaultState();
+  const ids = state.players.slice(0, 3).map(player => player.id);
+  state = first.window.previewApp.createSession(state, ids);
+  state = first.window.previewApp.confirmRound(state, {
+    landlordId: ids[2], isLandlordWin: true, bombCount: 1, kickStates: {},
+  });
+  state = first.window.previewApp.confirmRound(state, {
+    landlordId: ids[0], isLandlordWin: false, bombCount: 0, kickStates: {},
+  });
+  state = first.window.previewApp.endSession(state);
+
+  const { document } = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
+  document.querySelector('[data-screen="history"]').click();
+  const historyItem = document.querySelector('#history-list .history-item');
+  assert.match(historyItem.textContent, /张三\s*-20/);
+  assert.match(historyItem.textContent, /李四\s*-5/);
+  assert.match(historyItem.textContent, /王五\s*\+25/);
+
+  historyItem.click();
+  const detail = document.getElementById('detail-content');
+  const rounds = detail.querySelectorAll('.round-detail');
+  assert.equal(rounds.length, 2);
+  assert.match(rounds[0].textContent, /张三\s*-10/);
+  assert.match(rounds[0].textContent, /李四\s*\+5/);
+  assert.match(rounds[0].textContent, /王五\s*\+5/);
+  assert.match(rounds[1].textContent, /张三\s*-10/);
+  assert.match(rounds[1].textContent, /李四\s*-10/);
+  assert.match(rounds[1].textContent, /王五\s*\+20/);
+});
+
+test('history score breakdown defaults missing saved scores to zero', () => {
+  const first = loadPreview();
+  let state = first.window.previewApp.defaultState();
+  const ids = state.players.slice(0, 3).map(player => player.id);
+  state = first.window.previewApp.createSession(state, ids);
+  state = first.window.previewApp.confirmRound(state, {
+    landlordId: ids[0], isLandlordWin: true, bombCount: 0, kickStates: {},
+  });
+  state = first.window.previewApp.endSession(state);
+  delete state.history[0].totals[ids[1]];
+  delete state.history[0].rounds[0].scores[ids[1]];
+
+  const { document, scriptError } = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
+  document.querySelector('[data-screen="history"]').click();
+  assert.match(document.querySelector('#history-list .history-item').textContent, /李四\s*0/);
+  document.querySelector('#history-list .history-item').click();
+  assert.match(document.querySelector('#detail-content .round-detail').textContent, /李四\s*0/);
+  assert.equal(scriptError, undefined);
 });
 
 test('script executes without throwing on load', () => {

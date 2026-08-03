@@ -133,6 +133,8 @@
     .history-item { width: 100%; color: var(--text); text-align: left; cursor: pointer; }
     .history-item strong { display: block; }
     .history-item span { color: var(--muted); font-size: 13px; }
+    .history-main { min-width: 0; flex: 1; display: grid; gap: 5px; }
+    .history-item .round-scores { margin-top: 2px; }
     .setting-item { display: grid; grid-template-columns: 38px 1fr; gap: 11px; align-items: center; margin-bottom: 9px; }
     .setting-item input { width: 100%; background: #0f0d0b; border: 1px solid #4a3a2b; border-radius: 9px; padding: 10px; color: var(--text); }
     .update-notice { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 406px); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px 11px 15px; transform: translateX(-50%); background: #21170f; border: 1px solid var(--gold-soft); border-radius: 12px; box-shadow: 0 12px 30px #0009; color: var(--text); font-size: 14px; z-index: 30; }
@@ -653,7 +655,12 @@
     appState.history.forEach(session => {
       const button = document.createElement('button');
       button.className = 'card history-item';
-      button.innerHTML = '<div><strong>'+escapeHtml(session.players.map(p=>p.name).join('、'))+'</strong><span>'+escapeHtml(formatTime(session.endedAt || session.startedAt))+' · '+session.rounds.length+' 局</span></div><b>›</b>';
+      const snapshots = session.players || session.playerIds.map(id => playerById(id));
+      button.innerHTML = '<div class="history-main"><strong>'+
+        escapeHtml(snapshots.map(player => player.name).join('、'))+'</strong><span>'+
+        escapeHtml(formatTime(session.endedAt || session.startedAt))+' · '+
+        session.rounds.length+' 局</span>'+scoreBreakdownMarkup(snapshots, session.totals)+
+        '</div><b aria-hidden="true">›</b>';
       button.addEventListener('click', () => { selectedHistoryId = session.id; showScreen('detail'); });
       list.appendChild(button);
     });
@@ -668,7 +675,9 @@
       '<div class="card"><div class="muted">'+escapeHtml(formatTime(session.startedAt))+'</div><div class="score-grid">'+
       snapshots.map(p => '<div class="score-card"><strong>'+escapeHtml(p.name)+'</strong><div class="score">'+(session.totals[p.id]||0)+'</div></div>').join('')+
       '</div></div><h2 class="section-title">全部记录</h2>'+
-      (session.rounds.length ? session.rounds.slice().reverse().map(round => '<div class="card round-row"><span>第 '+round.index+' 局 · '+escapeHtml((snapshots.find(p=>p.id===round.landlordId)||{name:'?'}).name)+'地主</span><strong>'+(round.isLandlordWin?'胜':'负')+'</strong></div>').join('') : '<div class="card empty-card">没有局记录</div>');
+      (session.rounds.length
+        ? session.rounds.slice().reverse().map(round => roundDetailMarkup(round, snapshots)).join('')
+        : '<div class="card empty-card">没有局记录</div>');
   }
   function renderSettings() {
     document.querySelectorAll('#settings-list input').forEach(input => {
