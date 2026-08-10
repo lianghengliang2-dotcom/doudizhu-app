@@ -513,7 +513,7 @@
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'zh-CN';
-      utterance.rate = 1.1;
+      utterance.rate = 0.99;
       const voices = window.speechSynthesis.getVoices();
       const zhVoice = voices.find(v => v.lang && v.lang.toLowerCase().indexOf('zh') === 0);
       if (zhVoice) utterance.voice = zhVoice;
