@@ -278,6 +278,16 @@
       <header class="app-bar"><button class="back-btn go-home">← 返回</button><h1>设置</h1><span></span></header>
       <div class="content">
         <p class="hint">修改玩家姓名。旧历史场次会保留当时的姓名。</p>
+        <div class="card setting-item" style="margin-bottom:12px;">
+          <span class="avatar" style="background:#c9a227">声</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;">
+            <span>语音播报</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;">
+              <button id="voice-test" type="button" class="secondary" style="padding:6px 10px;border-radius:8px;">试听</button>
+              <input type="checkbox" id="voice-toggle" style="width:auto;height:22px;margin:0;accent-color:var(--gold);">
+            </span>
+          </div>
+        </div>
         <div id="settings-list">
           <label class="card setting-item"><span class="avatar" style="background:#e53935">张</span><input data-player-id="p1" value="张三" maxlength="12"></label>
           <label class="card setting-item"><span class="avatar" style="background:#1e88e5">李</span><input data-player-id="p2" value="李四" maxlength="12"></label>
@@ -491,6 +501,36 @@
     el.textContent = message; el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 1800);
   }
+
+  // ---- 语音播报 ----
+  const VOICE_KEY = 'doudizhu_voice_enabled';
+  function isVoiceEnabled() { return localStorage.getItem(VOICE_KEY) !== 'false'; }
+  function setVoiceEnabled(value) { localStorage.setItem(VOICE_KEY, value ? 'true' : 'false'); }
+  function speak(text) {
+    if (!isVoiceEnabled()) return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 1.1;
+      const voices = window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang && v.lang.toLowerCase().indexOf('zh') === 0);
+      if (zhVoice) utterance.voice = zhVoice;
+      window.speechSynthesis.speak(utterance);
+    } catch (_) {}
+  }
+  function buildAnnouncement(session, round) {
+    const nameOf = id => { const p = playerById(id); return p ? p.name : '玩家'; };
+    const roundResult = score => score > 0 ? '赢' + score + '分' : (score < 0 ? '输' + (-score) + '分' : '平0分');
+    const totalResult = score => score > 0 ? '正' + score : (score < 0 ? '负' + (-score) : '零');
+    let text = '第' + round.index + '局，地主' + nameOf(round.landlordId) + roundResult(round.scores[round.landlordId] || 0);
+    session.playerIds.forEach(id => {
+      if (id !== round.landlordId) text += '，' + nameOf(id) + roundResult(round.scores[id] || 0);
+    });
+    text += '。总分：' + session.playerIds.map(id => nameOf(id) + totalResult(session.totals[id] || 0)).join('，') + '。';
+    return text;
+  }
   function syncTabs(id) {
     document.querySelectorAll('.tab-bar button').forEach(button => button.classList.toggle('active', button.getAttribute('data-screen') === id));
   }
@@ -683,6 +723,8 @@
     document.querySelectorAll('#settings-list input').forEach(input => {
       const p = playerById(input.getAttribute('data-player-id')); if (p) input.value = p.name;
     });
+    const voiceToggle = byId('voice-toggle');
+    if (voiceToggle) voiceToggle.checked = isVoiceEnabled();
   }
 
   document.querySelectorAll('.tab-bar button').forEach(button => {
@@ -730,7 +772,11 @@
     setRecentRoundsExpanded(!recentRoundsExpanded);
   });
   byId('confirm-round').addEventListener('click', () => {
-    try { appState = confirmRound(appState, appState.draftRound); persist(); renderHomeSession(); byId('round-feedback').textContent = '记分成功'; showToast('本局已记分'); }
+    try {
+      appState = confirmRound(appState, appState.draftRound); persist(); renderHomeSession(); byId('round-feedback').textContent = '记分成功'; showToast('本局已记分');
+      const session = appState.activeSession;
+      if (session && session.rounds.length) speak(buildAnnouncement(session, session.rounds[session.rounds.length - 1]));
+    }
     catch (error) { byId('round-feedback').textContent = error.message; }
   });
   byId('save-settings').addEventListener('click', () => {
@@ -742,6 +788,13 @@
     if (!valid) { showToast('玩家姓名不能为空'); return; }
     persist(); renderSettings(); showToast('设置已保存');
   });
+  const voiceToggle = byId('voice-toggle');
+  if (voiceToggle) voiceToggle.addEventListener('change', event => {
+    setVoiceEnabled(event.target.checked);
+    if (event.target.checked) speak('斗地主记分，语音播报已开启');
+  });
+  const voiceTest = byId('voice-test');
+  if (voiceTest) voiceTest.addEventListener('click', () => speak('斗地主记分，语音播报试听'));
 
   renderNewSession();
   if (appState.activeSession) showScreen('home-session'); else showScreen('home-empty');
