@@ -73,6 +73,13 @@
     .score.positive { color: #f2c95f; }
     .score.negative { color: #72cda1; }
     .score.zero { color: var(--muted); }
+    .score-card { cursor: pointer; }
+    .score-card .score-edit-hint { position: absolute; top: 6px; right: 9px; font-size: 13px; opacity: .55; }
+    .score-card.editing { cursor: default; border-color: var(--gold); }
+    .score-input { width: 100%; margin-top: 8px; background: #0f0d0b; border: 1px solid var(--gold-soft); border-radius: 8px; padding: 8px 6px; color: var(--text); font-size: 24px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
+    .score-actions { display: flex; gap: 6px; margin-top: 7px; }
+    .score-actions button { flex: 1; border-radius: 8px; padding: 7px 4px; font-weight: 800; border: 1px solid #4a3a2b; background: #17120f; color: var(--text); }
+    .score-actions .score-confirm { border-color: #ef4438; background: var(--red); color: #fff; }
     .toolbar { display: flex; gap: 8px; margin: 12px 0; }
     .toolbar > * { flex: 1; }
     .round-row, .history-item { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 8px; }
@@ -595,6 +602,7 @@
     if (start) { start.disabled = count !== 3; start.textContent = count === 3 ? '开始场次' : '开始（请选择 3 位玩家）'; }
   }
   let recentRoundsExpanded = true;
+  let editingScoreId = null;
 
   function setRecentRoundsExpanded(expanded) {
     recentRoundsExpanded = !!expanded;
@@ -619,8 +627,13 @@
     byId('score-grid').innerHTML = session.playerIds.map(id => {
       const p = playerById(id); const score = session.totals[id] || 0;
       const polarity = score > 0 ? 'positive' : (score < 0 ? 'negative' : 'zero');
-      return '<div class="card score-card" style="--player-color:'+p.color+'"><strong class="player-name">'+escapeHtml(p.name)+'</strong><div class="score '+polarity+'">'+(score > 0 ? '+' : '')+score+'</div></div>';
+      if (editingScoreId === id) {
+        return '<div class="card score-card editing" data-player-id="'+id+'" style="--player-color:'+p.color+'"><strong class="player-name">'+escapeHtml(p.name)+'</strong><input class="score-input" type="number" value="'+score+'"><div class="score-actions"><button type="button" class="score-confirm">确定</button><button type="button" class="score-cancel">取消</button></div></div>';
+      }
+      return '<div class="card score-card" data-player-id="'+id+'" style="--player-color:'+p.color+'"><span class="score-edit-hint" aria-hidden="true">✎</span><strong class="player-name">'+escapeHtml(p.name)+'</strong><div class="score '+polarity+'">'+(score > 0 ? '+' : '')+score+'</div></div>';
     }).join('');
+    const scoreInput = byId('score-grid').querySelector('.score-input');
+    if (scoreInput) { scoreInput.focus(); scoreInput.select(); }
     const recent = session.rounds.slice(-3).reverse();
     byId('undo-last-round').disabled = session.rounds.length === 0;
     const recentPlayers = session.playerIds.map(id => playerById(id));
@@ -798,6 +811,47 @@
   });
   const voiceTest = byId('voice-test');
   if (voiceTest) voiceTest.addEventListener('click', () => speak('斗地主记分，语音播报试听'));
+  function commitScoreEdit(card) {
+    const input = card.querySelector('.score-input');
+    const value = input ? input.value.trim() : '';
+    const num = Number(value);
+    if (value === '' || !Number.isInteger(num)) { showToast('请输入整数'); return; }
+    if (!appState.activeSession) return;
+    const id = card.getAttribute('data-player-id');
+    appState.activeSession.totals[id] = num;
+    persist();
+    editingScoreId = null;
+    renderHomeSession();
+    showToast('已更新总分');
+  }
+  const scoreGrid = byId('score-grid');
+  if (scoreGrid) {
+    scoreGrid.addEventListener('click', event => {
+      const card = event.target.closest('.score-card');
+      if (!card) {
+        if (editingScoreId !== null) { editingScoreId = null; renderHomeSession(); }
+        return;
+      }
+      const id = card.getAttribute('data-player-id');
+      if (event.target.closest('.score-confirm')) { commitScoreEdit(card); return; }
+      if (event.target.closest('.score-cancel')) { editingScoreId = null; renderHomeSession(); return; }
+      if (editingScoreId !== null) {
+        if (editingScoreId === id) return;
+        editingScoreId = id;
+        renderHomeSession();
+        return;
+      }
+      editingScoreId = id;
+      renderHomeSession();
+    });
+    scoreGrid.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && event.target && event.target.classList && event.target.classList.contains('score-input')) {
+        event.preventDefault();
+        const card = event.target.closest('.score-card');
+        if (card) commitScoreEdit(card);
+      }
+    });
+  }
 
   renderNewSession();
   if (appState.activeSession) showScreen('home-session'); else showScreen('home-empty');
