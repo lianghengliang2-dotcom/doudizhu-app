@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../providers/game_provider.dart';
+import '../providers/voice_settings_provider.dart';
+import '../services/tts_service.dart';
+import '../utils/announcement.dart';
 import '../widgets/player_score_card.dart';
 import '../widgets/round_record_tile.dart';
 import '../widgets/score_input_panel.dart';
@@ -136,10 +139,17 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  ...recent.reversed.map((r) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: RoundRecordTile(round: r, playerNames: playerNames),
-                  )),
+                  ...recent.reversed.map((r) {
+                    final index = game.currentRounds.indexOf(r);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: RoundRecordTile(
+                        round: r,
+                        playerNames: playerNames,
+                        cumulativeScores: GameProvider.cumulativeScoresUpTo(game.currentRounds, index),
+                      ),
+                    );
+                  }),
                   // Decorative divider
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -167,8 +177,10 @@ class HomeScreen extends StatelessWidget {
                     required kickCount,
                     required kickFarmerId,
                     required bombCount,
-                  }) {
-                    game.addRound(
+                  }) async {
+                    final voice = context.read<VoiceSettingsProvider>();
+                    final tts = context.read<TtsService>();
+                    await game.addRound(
                       landlordId: landlordId,
                       farmerIds: farmerIds,
                       isLandlordWin: isLandlordWin,
@@ -178,6 +190,16 @@ class HomeScreen extends StatelessWidget {
                       kickFarmerId: kickFarmerId,
                       bombCount: bombCount,
                     );
+                    if (!voice.voiceEnabled) return;
+                    if (game.currentRounds.isEmpty) return;
+                    final latest = game.currentRounds.last;
+                    final text = buildRoundAnnouncement(
+                      round: latest,
+                      playerNames: playerNames,
+                      totalScores: game.totalScores,
+                      playerOrder: sessionPlayerIds,
+                    );
+                    await tts.speak(text);
                   },
                 ),
               ],

@@ -823,6 +823,44 @@ test('history list shows final totals and detail shows every round score change'
   assert.match(rounds[1].textContent, /王五\s*\+20/);
 });
 
+test('each round record shows a running cumulative totals line under its round scores', () => {
+  const first = loadPreview();
+  let state = first.window.previewApp.defaultState();
+  const ids = state.players.slice(0, 3).map(player => player.id);
+  state = first.window.previewApp.createSession(state, ids);
+  state = first.window.previewApp.confirmRound(state, {
+    landlordId: ids[2], isLandlordWin: true, bombCount: 1, kickStates: {},
+  });
+  state = first.window.previewApp.confirmRound(state, {
+    landlordId: ids[0], isLandlordWin: false, bombCount: 0, kickStates: {},
+  });
+
+  // Active-session home: recent rounds carry the total accumulated up to that round.
+  const home = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
+  const tiles = home.document.getElementById('recent-rounds').querySelectorAll('.round-detail');
+  assert.equal(tiles.length, 2);
+  const latestCumulative = tiles[0].querySelector('.round-cumulative');
+  assert.ok(latestCumulative, 'latest round tile must include a cumulative line');
+  assert.match(latestCumulative.textContent, /张三\s*累计\s*-20/);
+  assert.match(latestCumulative.textContent, /李四\s*累计\s*-5/);
+  assert.match(latestCumulative.textContent, /王五\s*累计\s*\+25/);
+  const earlierCumulative = tiles[1].querySelector('.round-cumulative');
+  assert.ok(earlierCumulative);
+  assert.match(earlierCumulative.textContent, /张三\s*累计\s*-10/);
+  assert.match(earlierCumulative.textContent, /李四\s*累计\s*-10/);
+  assert.match(earlierCumulative.textContent, /王五\s*累计\s*\+20/);
+
+  // History detail: every round shows the total accumulated up to that round.
+  state = first.window.previewApp.endSession(state);
+  const { document } = loadPreview({ seed: { doudizhu_state: JSON.stringify(state) } });
+  document.querySelector('[data-screen="history"]').click();
+  document.querySelector('#history-list .history-item').click();
+  const rounds = document.getElementById('detail-content').querySelectorAll('.round-detail');
+  assert.equal(rounds.length, 2);
+  assert.match(rounds[0].querySelector('.round-cumulative').textContent, /王五\s*累计\s*\+25/);
+  assert.match(rounds[1].querySelector('.round-cumulative').textContent, /王五\s*累计\s*\+20/);
+});
+
 test('history score breakdown defaults missing saved scores to zero', () => {
   const first = loadPreview();
   let state = first.window.previewApp.defaultState();
