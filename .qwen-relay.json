@@ -1,0 +1,16 @@
+{
+  "schema": "qwen-relay.project.v1",
+  "enabled": true,
+  "mode": "qwen",
+  "executor": "J:\\claude\\开发项目\\claude-qwen-relay",
+  "checks": [
+    [
+      "node",
+      "--test",
+      "doudizhu_app/test/preview_interactions.test.mjs"
+    ]
+  ],
+  "max_repairs": 2,
+  "timeout_seconds": 600,
+  "local_commit_policy": "after-pass-authorized"
+}

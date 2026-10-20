@@ -23,3 +23,14 @@
 }
 ```
 <!-- create-glm-subagent:end -->
+
+<!-- QWEN_RELAY_PROJECT_START -->
+## Qwen / Luna 接力
+
+- 本项目编码默认使用用户级 `$qwen-relay` Skill；Codex 规划，Sol 审查，按项目 mode 选择本地 Qwen 或 Codex Luna 执行。
+- 先读取 `.qwen-relay.json`；mode 为 qwen 或 luna，旧配置缺省为 qwen；`enabled: false` 或用户明确停用时遵循其选择。
+- 复用 `J:\claude\开发项目\claude-qwen-relay`，通过现有 `relay.py` 实际启动任务。
+- 项目重要规则由 Codex整理到任务要求；执行端安全模式不保证自动加载项目指令。
+- 任务文件和证据按 Skill 约定保存；验收失败最多回修两次，不跳过失败、不悄悄改用 Codex 编码。
+- 本地提交按项目配置及用户授权执行；不自动推送、部署或改全局/模型服务配置。
+<!-- QWEN_RELAY_PROJECT_END -->
