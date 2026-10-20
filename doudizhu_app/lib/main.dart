@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/player_provider.dart';
 import 'providers/game_provider.dart';
+import 'providers/voice_settings_provider.dart';
 import 'services/database_service.dart';
+import 'services/tts_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/new_session_screen.dart';
@@ -26,8 +28,10 @@ class DoudizhuApp extends StatelessWidget {
     final db = DatabaseService();
     return MultiProvider(
       providers: [
+        Provider(create: (_) => TtsService()),
         ChangeNotifierProvider(create: (_) => PlayerProvider(db)..loadPlayers()),
         ChangeNotifierProvider(create: (_) => GameProvider(db)..loadLatestSession()),
+        ChangeNotifierProvider(create: (_) => VoiceSettingsProvider(db)..load()),
       ],
       child: MaterialApp(
         title: '斗地主记分',

@@ -4,11 +4,13 @@ import '../models/round.dart';
 class RoundRecordTile extends StatelessWidget {
   final GameRound round;
   final Map<String, String> playerNames;
+  final Map<String, int>? cumulativeScores;
 
   const RoundRecordTile({
     super.key,
     required this.round,
     required this.playerNames,
+    this.cumulativeScores,
   });
 
   @override
@@ -82,6 +84,23 @@ class RoundRecordTile extends StatelessWidget {
               );
             }).toList(),
           ),
+          if (cumulativeScores != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: round.scores.keys.map((id) {
+                final name = playerNames[id] ?? '?';
+                final score = cumulativeScores![id] ?? 0;
+                return Text(
+                  '$name 累计${score >= 0 ? '+' : ''}$score',
+                  style: TextStyle(
+                    color: score >= 0 ? const Color(0xFFFFB74D) : const Color(0xFF81C784),
+                    fontSize: 12,
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ],
       ),
     );

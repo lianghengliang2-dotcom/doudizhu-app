@@ -75,6 +75,7 @@ class SessionDetailScreen extends StatelessWidget {
                     return RoundRecordTile(
                       round: game.currentRounds[index],
                       playerNames: playerNames,
+                      cumulativeScores: GameProvider.cumulativeScoresUpTo(game.currentRounds, index),
                     );
                   },
                 ),

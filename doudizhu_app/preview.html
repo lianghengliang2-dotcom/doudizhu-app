@@ -73,6 +73,13 @@
     .score.positive { color: #f2c95f; }
     .score.negative { color: #72cda1; }
     .score.zero { color: var(--muted); }
+    .score-card { cursor: pointer; }
+    .score-card .score-edit-hint { position: absolute; top: 6px; right: 9px; font-size: 13px; opacity: .55; }
+    .score-card.editing { cursor: default; border-color: var(--gold); }
+    .score-input { width: 100%; margin-top: 8px; background: #0f0d0b; border: 1px solid var(--gold-soft); border-radius: 8px; padding: 8px 6px; color: var(--text); font-size: 24px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
+    .score-actions { display: flex; gap: 6px; margin-top: 7px; }
+    .score-actions button { flex: 1; border-radius: 8px; padding: 7px 4px; font-weight: 800; border: 1px solid #4a3a2b; background: #17120f; color: var(--text); }
+    .score-actions .score-confirm { border-color: #ef4438; background: var(--red); color: #fff; }
     .toolbar { display: flex; gap: 8px; margin: 12px 0; }
     .toolbar > * { flex: 1; }
     .round-row, .history-item { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 8px; }
@@ -82,6 +89,9 @@
     .round-player-score { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-size: 13px; }
     .round-player-score i { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--player-color); }
     .round-player-score .score { font-size: 14px; line-height: 1; }
+    .round-cumulative { border-top: 1px dashed #3b3025; padding-top: 5px; }
+    .round-cumulative .round-player-score { font-size: 12px; color: var(--muted); }
+    .round-cumulative .round-player-score .score { font-size: 12px; }
     .empty-card { text-align: center; color: var(--muted); padding: 20px; }
     .player-list { display: grid; gap: 9px; }
     .player-item { display: flex; align-items: center; gap: 11px; cursor: pointer; transition: .15s; }
@@ -275,6 +285,16 @@
       <header class="app-bar"><button class="back-btn go-home">← 返回</button><h1>设置</h1><span></span></header>
       <div class="content">
         <p class="hint">修改玩家姓名。旧历史场次会保留当时的姓名。</p>
+        <div class="card setting-item" style="margin-bottom:12px;">
+          <span class="avatar" style="background:#c9a227">声</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;">
+            <span>语音播报</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;">
+              <button id="voice-test" type="button" class="secondary" style="padding:6px 10px;border-radius:8px;">试听</button>
+              <input type="checkbox" id="voice-toggle" style="width:auto;height:22px;margin:0;accent-color:var(--gold);">
+            </span>
+          </div>
+        </div>
         <div id="settings-list">
           <label class="card setting-item"><span class="avatar" style="background:#e53935">张</span><input data-player-id="p1" value="张三" maxlength="12"></label>
           <label class="card setting-item"><span class="avatar" style="background:#1e88e5">李</span><input data-player-id="p2" value="李四" maxlength="12"></label>
@@ -458,6 +478,36 @@
     el.textContent = message; el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 1800);
   }
+
+  // ---- 语音播报 ----
+  const VOICE_KEY = 'doudizhu_voice_enabled';
+  function isVoiceEnabled() { return localStorage.getItem(VOICE_KEY) !== 'false'; }
+  function setVoiceEnabled(value) { localStorage.setItem(VOICE_KEY, value ? 'true' : 'false'); }
+  function speak(text) {
+    if (!isVoiceEnabled()) return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 0.99;
+      const voices = window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang && v.lang.toLowerCase().indexOf('zh') === 0);
+      if (zhVoice) utterance.voice = zhVoice;
+      window.speechSynthesis.speak(utterance);
+    } catch (_) {}
+  }
+  function buildAnnouncement(session, round) {
+    const nameOf = id => { const p = playerById(id); return p ? p.name : '玩家'; };
+    const roundResult = score => score > 0 ? '赢' + score + '分' : (score < 0 ? '输' + (-score) + '分' : '平0分');
+    const totalResult = score => score > 0 ? '正' + score : (score < 0 ? '负' + (-score) : '零');
+    let text = '第' + round.index + '局，地主' + nameOf(round.landlordId) + roundResult(round.scores[round.landlordId] || 0);
+    session.playerIds.forEach(id => {
+      if (id !== round.landlordId) text += '，' + nameOf(id) + roundResult(round.scores[id] || 0);
+    });
+    text += '。总分：' + session.playerIds.map(id => nameOf(id) + totalResult(session.totals[id] || 0)).join('，') + '。';
+    return text;
+  }
   function syncTabs(id) {
     document.querySelectorAll('.tab-bar button').forEach(button => button.classList.toggle('active', button.getAttribute('data-screen') === id));
   }
@@ -490,12 +540,29 @@
         formatSignedScore(score)+'</strong></span>';
     }).join('') + '</div>';
   }
-  function roundDetailMarkup(round, players) {
+  function cumulativeTotals(rounds) {
+    const running = {};
+    return rounds.map(round => {
+      const scores = round.scores || {};
+      Object.keys(scores).forEach(id => { running[id] = (running[id] || 0) + Number(scores[id] || 0); });
+      return Object.assign({}, running);
+    });
+  }
+  function cumulativeBreakdownMarkup(players, cumulative) {
+    if (!cumulative) return '';
+    return '<div class="round-scores round-cumulative">' + players.map(player => {
+      const score = Number(cumulative[player.id] || 0);
+      return '<span class="round-player-score"><span>'+escapeHtml(player.name)+' 累计</span>'+
+        '<strong class="score '+scorePolarity(score)+'">'+formatSignedScore(score)+'</strong></span>';
+    }).join('') + '</div>';
+  }
+  function roundDetailMarkup(round, players, cumulative) {
     const landlord = players.find(player => player.id === round.landlordId) || { name: '?' };
     return '<div class="card round-detail"><div class="round-heading"><span>第 '+
       round.index+' 局 · '+escapeHtml(landlord.name)+'地主</span><strong>'+
       (round.isLandlordWin ? '胜' : '负')+'</strong></div>'+
-      scoreBreakdownMarkup(players, round.scores)+'</div>';
+      scoreBreakdownMarkup(players, round.scores)+
+      cumulativeBreakdownMarkup(players, cumulative)+'</div>';
   }
   function renderScreen(id) {
     if (id === 'home-session') renderHomeSession();
@@ -519,6 +586,7 @@
     if (start) { start.disabled = count !== 3; start.textContent = count === 3 ? '开始场次' : '开始（请选择 3 位玩家）'; }
   }
   let recentRoundsExpanded = true;
+  let editingScoreId = null;
 
   function setRecentRoundsExpanded(expanded) {
     recentRoundsExpanded = !!expanded;
@@ -543,13 +611,19 @@
     byId('score-grid').innerHTML = session.playerIds.map(id => {
       const p = playerById(id); const score = session.totals[id] || 0;
       const polarity = score > 0 ? 'positive' : (score < 0 ? 'negative' : 'zero');
-      return '<div class="card score-card" style="--player-color:'+p.color+'"><strong class="player-name">'+escapeHtml(p.name)+'</strong><div class="score '+polarity+'">'+(score > 0 ? '+' : '')+score+'</div></div>';
+      if (editingScoreId === id) {
+        return '<div class="card score-card editing" data-player-id="'+id+'" style="--player-color:'+p.color+'"><strong class="player-name">'+escapeHtml(p.name)+'</strong><input class="score-input" type="number" value="'+score+'"><div class="score-actions"><button type="button" class="score-confirm">确定</button><button type="button" class="score-cancel">取消</button></div></div>';
+      }
+      return '<div class="card score-card" data-player-id="'+id+'" style="--player-color:'+p.color+'"><span class="score-edit-hint" aria-hidden="true">✎</span><strong class="player-name">'+escapeHtml(p.name)+'</strong><div class="score '+polarity+'">'+(score > 0 ? '+' : '')+score+'</div></div>';
     }).join('');
+    const scoreInput = byId('score-grid').querySelector('.score-input');
+    if (scoreInput) { scoreInput.focus(); scoreInput.select(); }
     const recent = session.rounds.slice(-3).reverse();
     byId('undo-last-round').disabled = session.rounds.length === 0;
     const recentPlayers = session.playerIds.map(id => playerById(id));
+    const cumulatives = cumulativeTotals(session.rounds);
     byId('recent-rounds').innerHTML = recent.length
-      ? recent.map(round => roundDetailMarkup(round, recentPlayers)).join('')
+      ? recent.map(round => roundDetailMarkup(round, recentPlayers, cumulatives[session.rounds.indexOf(round)])).join('')
       : '<div class="card empty-card">还没有记分记录</div>';
     const summary = byId('recent-rounds-summary');
     summary.textContent = recent.length
@@ -638,18 +712,21 @@
     const root = byId('detail-content');
     if (!session) { root.innerHTML = '<div class="card empty-card">暂无场次详情</div>'; return; }
     const snapshots = session.players || session.playerIds.map(id => playerById(id));
+    const cumulatives = cumulativeTotals(session.rounds);
     root.innerHTML =
       '<div class="card"><div class="muted">'+escapeHtml(formatTime(session.startedAt))+'</div><div class="score-grid">'+
       snapshots.map(p => '<div class="score-card"><strong>'+escapeHtml(p.name)+'</strong><div class="score">'+(session.totals[p.id]||0)+'</div></div>').join('')+
       '</div></div><h2 class="section-title">全部记录</h2>'+
       (session.rounds.length
-        ? session.rounds.slice().reverse().map(round => roundDetailMarkup(round, snapshots)).join('')
+        ? session.rounds.slice().reverse().map(round => roundDetailMarkup(round, snapshots, cumulatives[session.rounds.indexOf(round)])).join('')
         : '<div class="card empty-card">没有局记录</div>');
   }
   function renderSettings() {
     document.querySelectorAll('#settings-list input').forEach(input => {
       const p = playerById(input.getAttribute('data-player-id')); if (p) input.value = p.name;
     });
+    const voiceToggle = byId('voice-toggle');
+    if (voiceToggle) voiceToggle.checked = isVoiceEnabled();
   }
 
   document.querySelectorAll('.tab-bar button').forEach(button => {
@@ -697,7 +774,11 @@
     setRecentRoundsExpanded(!recentRoundsExpanded);
   });
   byId('confirm-round').addEventListener('click', () => {
-    try { appState = confirmRound(appState, appState.draftRound); persist(); renderHomeSession(); byId('round-feedback').textContent = '记分成功'; showToast('本局已记分'); }
+    try {
+      appState = confirmRound(appState, appState.draftRound); persist(); renderHomeSession(); byId('round-feedback').textContent = '记分成功'; showToast('本局已记分');
+      const session = appState.activeSession;
+      if (session && session.rounds.length) speak(buildAnnouncement(session, session.rounds[session.rounds.length - 1]));
+    }
     catch (error) { byId('round-feedback').textContent = error.message; }
   });
   byId('save-settings').addEventListener('click', () => {
@@ -709,6 +790,54 @@
     if (!valid) { showToast('玩家姓名不能为空'); return; }
     persist(); renderSettings(); showToast('设置已保存');
   });
+  const voiceToggle = byId('voice-toggle');
+  if (voiceToggle) voiceToggle.addEventListener('change', event => {
+    setVoiceEnabled(event.target.checked);
+    if (event.target.checked) speak('斗地主记分，语音播报已开启');
+  });
+  const voiceTest = byId('voice-test');
+  if (voiceTest) voiceTest.addEventListener('click', () => speak('斗地主记分，语音播报试听'));
+  function commitScoreEdit(card) {
+    const input = card.querySelector('.score-input');
+    const value = input ? input.value.trim() : '';
+    const num = Number(value);
+    if (value === '' || !Number.isInteger(num)) { showToast('请输入整数'); return; }
+    if (!appState.activeSession) return;
+    const id = card.getAttribute('data-player-id');
+    appState.activeSession.totals[id] = num;
+    persist();
+    editingScoreId = null;
+    renderHomeSession();
+    showToast('已更新总分');
+  }
+  const scoreGrid = byId('score-grid');
+  if (scoreGrid) {
+    scoreGrid.addEventListener('click', event => {
+      const card = event.target.closest('.score-card');
+      if (!card) {
+        if (editingScoreId !== null) { editingScoreId = null; renderHomeSession(); }
+        return;
+      }
+      const id = card.getAttribute('data-player-id');
+      if (event.target.closest('.score-confirm')) { commitScoreEdit(card); return; }
+      if (event.target.closest('.score-cancel')) { editingScoreId = null; renderHomeSession(); return; }
+      if (editingScoreId !== null) {
+        if (editingScoreId === id) return;
+        editingScoreId = id;
+        renderHomeSession();
+        return;
+      }
+      editingScoreId = id;
+      renderHomeSession();
+    });
+    scoreGrid.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && event.target && event.target.classList && event.target.classList.contains('score-input')) {
+        event.preventDefault();
+        const card = event.target.closest('.score-card');
+        if (card) commitScoreEdit(card);
+      }
+    });
+  }
 
   renderNewSession();
   if (appState.activeSession) showScreen('home-session'); else showScreen('home-empty');

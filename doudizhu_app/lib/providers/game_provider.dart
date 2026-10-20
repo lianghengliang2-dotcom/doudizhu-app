@@ -34,6 +34,16 @@ class GameProvider extends ChangeNotifier {
     return scores;
   }
 
+  static Map<String, int> cumulativeScoresUpTo(List<GameRound> rounds, int index) {
+    final scores = <String, int>{};
+    for (var i = 0; i <= index && i < rounds.length; i++) {
+      for (final entry in rounds[i].scores.entries) {
+        scores[entry.key] = (scores[entry.key] ?? 0) + entry.value;
+      }
+    }
+    return scores;
+  }
+
   Future<void> loadLatestSession() async {
     _currentSession = await _db.getLatestSession();
     if (_currentSession != null) {
