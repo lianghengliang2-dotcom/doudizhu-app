@@ -907,6 +907,8 @@ function createPwaFakes(options = {}) {
     setVisibility(state) { documentObj.visibilityState = state; },
     async fireServiceWorker(type) { await workerHandlers.get(type)?.(); },
     async clickUpdate() { await buttonHandlers.get('click')?.(); },
+    async fireUpdateFound() { await registrationHandlers.get('updatefound')?.(); },
+    async fireInstallingStateChange() { await installingHandlers.get('statechange')?.(); },
   };
 }
 
@@ -916,7 +918,10 @@ test('page links the relative manifest, theme color, favicon, and apple touch ic
   assert.match(html, /name="theme-color" content="#151515"/);
   assert.match(html, /rel="icon" href="\.\/icons\/icon-192\.png"/);
   assert.match(html, /rel="apple-touch-icon" href="\.\/icons\/icon-192\.png"/);
-  assert.match(html, /\.update-notice\[hidden\]\s*\{\s*display:\s*none;\s*\}/);
+  assert.equal(typeof loadPreview().window.previewApp.setupPwaUpdates, 'function');
+  assert.equal(html.includes('发现新版本'), false, 'update notice text must be removed');
+  assert.equal(html.includes('立即更新'), false, 'update button label must be removed');
+  assert.equal(html.includes('update-notice'), false, 'update notice UI must be removed');
 });
 
 test('service worker eligibility accepts HTTPS and local development only', () => {
@@ -943,27 +948,22 @@ test('setup registers relative scope and checks on load, online, and return to f
   assert.equal(fakes.updateCalls, 3);
 });
 
-test('waiting worker is shown and update button sends SKIP_WAITING', async () => {
+test('waiting worker and updatefound never show a notice or send SKIP_WAITING', async () => {
   const fakes = createPwaFakes({ waiting: true });
   await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
-  assert.equal(fakes.banner.hidden, false);
+  assert.equal(fakes.banner.hidden, true);
+  await fakes.fireUpdateFound();
+  await fakes.fireInstallingStateChange();
+  assert.equal(fakes.banner.hidden, true);
   await fakes.clickUpdate();
-  assert.deepEqual(JSON.parse(JSON.stringify(fakes.messages)), [{ type: 'SKIP_WAITING' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(fakes.messages)), []);
 });
 
-test('controllerchange reloads only after an explicit waiting-worker update request', async () => {
-  const firstInstall = createPwaFakes();
-  await loadPreview().window.previewApp.setupPwaUpdates(firstInstall.deps);
-  await firstInstall.fireServiceWorker('controllerchange');
-  assert.equal(firstInstall.reloadCalls, 0);
-
+test('controllerchange never triggers an automatic reload', async () => {
   const fakes = createPwaFakes({ waiting: true });
   await loadPreview().window.previewApp.setupPwaUpdates(fakes.deps);
-  await fakes.clickUpdate();
-  assert.deepEqual(JSON.parse(JSON.stringify(fakes.messages)), [{ type: 'SKIP_WAITING' }]);
   await fakes.fireServiceWorker('controllerchange');
-  await fakes.fireServiceWorker('controllerchange');
-  assert.equal(fakes.reloadCalls, 1);
+  assert.equal(fakes.reloadCalls, 0);
 
   const failed = createPwaFakes({ registrationError: new Error('offline') });
   assert.equal(await loadPreview().window.previewApp.setupPwaUpdates(failed.deps), null);
